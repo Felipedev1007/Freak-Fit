@@ -18,7 +18,7 @@ const LayoutWrapper = ({ children, currentPageName }) => Layout ?
 const AuthenticatedApp = () => {
   const { isLoadingAuth, isLoadingPublicSettings, authError, navigateToLogin } = useAuth();
 
-  // Show loading spinner while checking app public settings or auth
+  // Mostra spinner de carregamento enquanto verifica as configurações públicas do app ou a autenticação
   if (isLoadingPublicSettings || isLoadingAuth) {
     return (
       <div className="fixed inset-0 flex items-center justify-center">
@@ -27,18 +27,18 @@ const AuthenticatedApp = () => {
     );
   }
 
-  // Handle authentication errors
+  // Trata erros de autenticação
   if (authError) {
     if (authError.type === 'user_not_registered') {
       return <UserNotRegisteredError />;
     } else if (authError.type === 'auth_required') {
-      // Redirect to login automatically
+  // Redireciona para login automaticamente
       navigateToLogin();
       return null;
     }
   }
 
-  // Render the main app
+  // Renderiza a aplicação principal
   return (
     <Routes>
       <Route path="/" element={
