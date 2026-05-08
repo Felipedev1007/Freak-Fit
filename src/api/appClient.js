@@ -1,8 +1,11 @@
 // @ts-nocheck
 import { hasBase44AiConfig, invokeBase44LLM, uploadBase44File } from './base44AiClient';
+import { hasSupabaseConfig, supabase } from './supabaseClient';
 
 const STORAGE_PREFIX = "freakfit";
 const USER_KEY = `${STORAGE_PREFIX}:session-user`;
+const SUPABASE_ENTITY_TABLE = "freakfit_entities";
+const SUPABASE_UPLOAD_BUCKET = "freakfit-uploads";
 const ENTITY_NAMES = [
   "UserProfile",
   "WorkoutPlan",
@@ -78,6 +81,10 @@ function writeCollection(entityName, items) {
   writeJson(storageKey(entityName), items);
 }
 
+function useSupabaseData() {
+  return Boolean(hasSupabaseConfig && supabase);
+}
+
 function matchesCriteria(item, criteria = {}) {
   return Object.entries(criteria || {}).every(([key, value]) => {
     if (Array.isArray(value)) return value.includes(item[key]);
@@ -109,9 +116,132 @@ function sortItems(items, sortBy) {
   });
 }
 
+function remoteItemFromRow(row) {
+  const data = clone(row?.data || {});
+  return {
+    ...data,
+    id: row.id,
+    created_date: data.created_date || row.created_date,
+    updated_date: data.updated_date || row.updated_date,
+  };
+}
+
+function ownerEmailFrom(data = {}) {
+  return data?.user_email || getCurrentUser().email;
+}
+
+function isUuid(value) {
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(String(value || ""));
+}
+
+async function readRemoteCollection(entityName, criteria = {}) {
+  let query = supabase
+    .from(SUPABASE_ENTITY_TABLE)
+    .select("id,data,created_date,updated_date")
+    .eq("entity_name", entityName);
+
+  const userEmail = criteria?.user_email || getCurrentUser().email;
+  if (userEmail) query = query.eq("user_email", userEmail);
+
+  const { data, error } = await query;
+  if (error) throw error;
+  return (data || []).map(remoteItemFromRow);
+}
+
+async function createRemoteItem(entityName, data) {
+  const now = new Date().toISOString();
+  const id = createId();
+  const item = {
+    ...clone(data),
+    id,
+    created_date: data?.created_date || now,
+    updated_date: now,
+  };
+
+  const { data: row, error } = await supabase
+    .from(SUPABASE_ENTITY_TABLE)
+    .insert({
+      id,
+      entity_name: entityName,
+      user_email: ownerEmailFrom(item),
+      data: item,
+      created_date: item.created_date,
+      updated_date: item.updated_date,
+    })
+    .select("id,data,created_date,updated_date")
+    .single();
+
+  if (error) throw error;
+  return remoteItemFromRow(row);
+}
+
+async function updateRemoteItem(entityName, id, patch) {
+  const now = new Date().toISOString();
+  const { data: existing, error: readError } = await supabase
+    .from(SUPABASE_ENTITY_TABLE)
+    .select("id,data,created_date,updated_date")
+    .eq("entity_name", entityName)
+    .eq("id", id)
+    .maybeSingle();
+
+  if (readError) throw readError;
+
+  const rowId = existing?.id || (isUuid(id) ? id : createId());
+  const item = {
+    ...(existing?.data || {}),
+    ...clone(patch),
+    id: rowId,
+    created_date: existing?.data?.created_date || existing?.created_date || now,
+    updated_date: now,
+  };
+
+  const payload = {
+    id: rowId,
+    entity_name: entityName,
+    user_email: ownerEmailFrom(item),
+    data: item,
+    created_date: item.created_date,
+    updated_date: item.updated_date,
+  };
+
+  const query = existing
+    ? supabase.from(SUPABASE_ENTITY_TABLE).update(payload).eq("id", rowId)
+    : supabase.from(SUPABASE_ENTITY_TABLE).insert(payload);
+
+  const { data: row, error } = await query
+    .select("id,data,created_date,updated_date")
+    .single();
+
+  if (error) throw error;
+  return remoteItemFromRow(row);
+}
+
+async function deleteRemoteItem(entityName, id) {
+  const { error } = await supabase
+    .from(SUPABASE_ENTITY_TABLE)
+    .delete()
+    .eq("entity_name", entityName)
+    .eq("id", id);
+
+  if (error) throw error;
+  return true;
+}
+
 function createEntityApi(entityName) {
   return {
     async filter(criteria = {}, sortBy = null, limit = null) {
+      if (useSupabaseData()) {
+        try {
+          const remoteItems = await readRemoteCollection(entityName, criteria);
+          const filteredRemote = remoteItems.filter((item) => matchesCriteria(item, criteria));
+          const sortedRemote = sortItems(filteredRemote, sortBy);
+          const limitedRemote = Number.isFinite(limit) ? sortedRemote.slice(0, limit) : sortedRemote;
+          return clone(limitedRemote);
+        } catch (error) {
+          console.warn(`Supabase read failed for ${entityName}. Falling back to local data:`, error);
+        }
+      }
+
       const filtered = readCollection(entityName).filter((item) => matchesCriteria(item, criteria));
       const sorted = sortItems(filtered, sortBy);
       const limited = Number.isFinite(limit) ? sorted.slice(0, limit) : sorted;
@@ -119,6 +249,14 @@ function createEntityApi(entityName) {
     },
 
     async create(data) {
+      if (useSupabaseData()) {
+        try {
+          return await createRemoteItem(entityName, data);
+        } catch (error) {
+          console.warn(`Supabase create failed for ${entityName}. Falling back to local data:`, error);
+        }
+      }
+
       const now = new Date().toISOString();
       const items = readCollection(entityName);
       const item = {
@@ -132,6 +270,14 @@ function createEntityApi(entityName) {
     },
 
     async update(id, patch) {
+      if (useSupabaseData()) {
+        try {
+          return await updateRemoteItem(entityName, id, patch);
+        } catch (error) {
+          console.warn(`Supabase update failed for ${entityName}. Falling back to local data:`, error);
+        }
+      }
+
       const now = new Date().toISOString();
       const items = readCollection(entityName);
       const index = items.findIndex((item) => item.id === id);
@@ -148,6 +294,14 @@ function createEntityApi(entityName) {
     },
 
     async delete(id) {
+      if (useSupabaseData()) {
+        try {
+          return await deleteRemoteItem(entityName, id);
+        } catch (error) {
+          console.warn(`Supabase delete failed for ${entityName}. Falling back to local data:`, error);
+        }
+      }
+
       writeCollection(entityName, readCollection(entityName).filter((item) => item.id !== id));
       return true;
     },
@@ -655,6 +809,29 @@ async function imageFileToDataUrl(file) {
   });
 }
 
+async function uploadSupabaseFile({ file }) {
+  if (!useSupabaseData()) {
+    throw new Error("Supabase is not configured.");
+  }
+
+  const extension = String(file?.name || "upload.jpg").split(".").pop() || "jpg";
+  const path = `${getCurrentUser().id}/${createId()}.${extension.toLowerCase()}`;
+  const { data, error } = await supabase.storage
+    .from(SUPABASE_UPLOAD_BUCKET)
+    .upload(path, file, {
+      contentType: file?.type || "application/octet-stream",
+      upsert: false,
+    });
+
+  if (error) throw error;
+
+  const { data: publicData } = supabase.storage
+    .from(SUPABASE_UPLOAD_BUCKET)
+    .getPublicUrl(data.path);
+
+  return { file_url: publicData.publicUrl };
+}
+
 const entities = ENTITY_NAMES.reduce((api, entityName) => {
   api[entityName] = createEntityApi(entityName);
   return api;
@@ -687,6 +864,14 @@ const client = {
             return await uploadBase44File({ file });
           } catch (error) {
             console.warn("Base44 upload failed. Falling back to local data URL:", error);
+          }
+        }
+
+        if (useSupabaseData()) {
+          try {
+            return await uploadSupabaseFile({ file });
+          } catch (error) {
+            console.warn("Supabase upload failed. Falling back to local data URL:", error);
           }
         }
 

@@ -14,7 +14,6 @@ const base44Ai = hasBase44AiConfig()
       appId,
       appBaseUrl,
       functionsVersion,
-      serverUrl: '',
       requiresAuth: false,
     })
   : null;
