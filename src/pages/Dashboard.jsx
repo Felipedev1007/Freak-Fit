@@ -1,10 +1,10 @@
 import { useState, useEffect } from "react";
-import { base44 } from "@/api/base44Client";
+import { appClient } from "@/api/appClient";
 import { createPageUrl } from "@/utils";
 import { Link } from "react-router-dom";
 import { Dumbbell, Utensils, TrendingUp, Camera, ChevronRight, Flame, Droplets, Target, Zap } from "lucide-react";
-import LoadingSpinner from "@/components/ui/LoadingSpinner";
-import GeneratingLoader from "@/components/ui/GeneratingLoader";
+import LoadingSpinner from "@/components/ui/feedback/LoadingSpinner";
+import GeneratingLoader from "@/components/ui/feedback/GeneratingLoader";
 
 export default function Dashboard() {
   const [user, setUser] = useState(null);
@@ -23,10 +23,10 @@ export default function Dashboard() {
 
   async function init() {
     setLoading(true);
-    const u = await base44.auth.me().catch(() => null);
-    if (!u) { base44.auth.redirectToLogin(createPageUrl("Dashboard")); return; }
+    const u = await appClient.auth.me().catch(() => null);
+    if (!u) { appClient.auth.redirectToLogin(createPageUrl("Dashboard")); return; }
     setUser(u);
-    const profiles = await base44.entities.UserProfile.filter({ user_email: u.email });
+    const profiles = await appClient.entities.UserProfile.filter({ user_email: u.email });
     if (!profiles.length || !profiles[0].onboarding_completed) {
       window.location.href = createPageUrl("Onboarding");
       return;
@@ -34,8 +34,8 @@ export default function Dashboard() {
     const p = profiles[0];
     setProfile(p);
     const [workouts, diets] = await Promise.all([
-      base44.entities.WorkoutPlan.filter({ user_email: u.email }),
-      base44.entities.DietPlan.filter({ user_email: u.email })
+      appClient.entities.WorkoutPlan.filter({ user_email: u.email }),
+      appClient.entities.DietPlan.filter({ user_email: u.email })
     ]);
     const hasWorkout = workouts.length > 0;
     const hasDiet = diets.length > 0;
@@ -73,14 +73,14 @@ export default function Dashboard() {
         const { day, focus } = trainingDaysList[ti];
         setGeneratingMsg(`Criando treino: ${DAY_FULL_W[day]}... (${ti + 1}/${trainingDaysList.length})`);
         const notRepeat = usedExercises.length > 0 ? `NÃO use: ${usedExercises.join(", ")}.` : "";
-        const res = await base44.integrations.Core.InvokeLLM({
+        const res = await appClient.integrations.Core.InvokeLLM({
           prompt: `Personal trainer: crie treino para ${DAY_FULL_W[day]}, foco em "${focus}". Perfil: ${ctx}. ${limitations} ${notRepeat} Crie 5 exercícios ÚNICOS. JSON: {"name":"Treino de ${focus}","focus":"${focus}","rest_day":false,"exercises":[{"name":"string","muscle_group":"string","sets":3,"reps":"string","rest_seconds":60,"instructions":"string","video_search":"string"}]}`,
           response_json_schema: { type: "object", properties: { name: { type: "string" }, focus: { type: "string" }, rest_day: { type: "boolean" }, exercises: { type: "array", items: { type: "object" } } } }
         });
         if (res.exercises) res.exercises.forEach(e => { if (e.name) usedExercises.push(e.name); });
         week_plan[day] = { ...res, rest_day: false };
       }
-      const wp = await base44.entities.WorkoutPlan.create({ user_email: u.email, week_plan, generated_at: new Date().toISOString() });
+      const wp = await appClient.entities.WorkoutPlan.create({ user_email: u.email, week_plan, generated_at: new Date().toISOString() });
       setWorkoutPlan(wp);
     }
 
@@ -108,7 +108,7 @@ export default function Dashboard() {
 
         setGeneratingMsg(`Gerando dieta: ${DAY_FULL[day]}... (${i + 1}/7)`);
 
-        const res = await base44.integrations.Core.InvokeLLM({
+        const res = await appClient.integrations.Core.InvokeLLM({
           prompt: `Nutricionista: plano alimentar para ${DAY_FULL[day]}. Perfil: ${ctx}. ${calNote} ${prevSummary} ${restrictions} Use ingredientes VARIADOS. JSON: {"daily_plan":{"cafe_manha":{"name":"str","time":"07:00","calories":0,"protein":0,"carbs":0,"fat":0,"ingredients":[{"name":"str","quantity":"str","calories":0,"protein":0,"carbs":0,"fat":0}]},"almoco":{"name":"str","time":"12:00","calories":0,"protein":0,"carbs":0,"fat":0,"ingredients":[]},"lanche_tarde":{"name":"str","time":"15:30","calories":0,"protein":0,"carbs":0,"fat":0,"ingredients":[]},"jantar":{"name":"str","time":"19:00","calories":0,"protein":0,"carbs":0,"fat":0,"ingredients":[]},"ceia":{"name":"str","time":"21:30","calories":0,"protein":0,"carbs":0,"fat":0,"ingredients":[]}},"main_protein":"str","main_carb":"str"}`,
           response_json_schema: { type: "object", properties: { daily_plan: { type: "object" }, main_protein: { type: "string" }, main_carb: { type: "string" } } }
         });
@@ -128,12 +128,12 @@ export default function Dashboard() {
       }
 
       setGeneratingMsg("Gerando dicas de saúde...");
-      const tipsRes = await base44.integrations.Core.InvokeLLM({
+      const tipsRes = await appClient.integrations.Core.InvokeLLM({
         prompt: `Dê 3 dicas práticas de nutrição para: ${ctx}. JSON: {"health_tips":["dica1","dica2","dica3"]}`,
         response_json_schema: { type: "object", properties: { health_tips: { type: "array", items: { type: "string" } } } }
       });
 
-      const dp = await base44.entities.DietPlan.create({
+      const dp = await appClient.entities.DietPlan.create({
         user_email: u.email,
         week_plan,
         health_tips: tipsRes.health_tips || [],
@@ -166,7 +166,7 @@ export default function Dashboard() {
         </div>
         <GeneratingLoader message={generatingMsg || "Criando seu plano personalizado..."} estimatedSeconds={90} />
         <p className="text-xs text-center mt-2" style={{ color: "var(--text-muted)" }}>
-          A IA está analisando seu biotipo, objetivos e histórico...
+          Preparando seu plano com base no seu biotipo, objetivos e histórico...
         </p>
       </div>
     );

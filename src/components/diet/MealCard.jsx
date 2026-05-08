@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { ChevronDown, ChevronUp, RefreshCw } from "lucide-react";
-import LoadingSpinner from "@/components/ui/LoadingSpinner";
+import LoadingSpinner from "@/components/ui/feedback/LoadingSpinner";
 
 const MEAL_ICONS = {
   cafe_manha: "☀️",

@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { RefreshCw, Play, ChevronDown, ChevronUp, Clock, Repeat } from "lucide-react";
-import LoadingSpinner from "@/components/ui/LoadingSpinner";
+import LoadingSpinner from "@/components/ui/feedback/LoadingSpinner";
 
 export default function ExerciseCard({ exercise, onReplace }) {
   const [expanded, setExpanded] = useState(false);

@@ -1,11 +1,11 @@
 import { useState, useEffect } from "react";
-import { base44 } from "@/api/base44Client";
+import { appClient } from "@/api/appClient";
 import { createPageUrl } from "@/utils";
 import { Plus, TrendingUp, Scale, Ruler, Flame } from "lucide-react";
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, AreaChart, Area, ReferenceLine } from "recharts";
+import { XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, AreaChart, Area } from "recharts";
 import { format, subWeeks, subMonths, subYears } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import LoadingSpinner from "@/components/ui/LoadingSpinner";
+import LoadingSpinner from "@/components/ui/feedback/LoadingSpinner";
 
 const PERIODS = [
   { key: "week", label: "Semana" },
@@ -26,10 +26,10 @@ export default function Progress() {
   useEffect(() => { init(); }, []);
 
   async function init() {
-    const u = await base44.auth.me().catch(() => null);
-    if (!u) { base44.auth.redirectToLogin(createPageUrl("Progress")); return; }
+    const u = await appClient.auth.me().catch(() => null);
+    if (!u) { appClient.auth.redirectToLogin(createPageUrl("Progress")); return; }
     setUser(u);
-    const data = await base44.entities.ProgressLog.filter({ user_email: u.email }, "-log_date", 100);
+    const data = await appClient.entities.ProgressLog.filter({ user_email: u.email }, "-log_date", 100);
     setLogs(data);
     setLoading(false);
   }
@@ -38,8 +38,8 @@ export default function Progress() {
     if (!user) return;
     setSaving(true);
     const entry = { user_email: user.email, ...formData, weight: parseFloat(formData.weight) || null, waist: parseFloat(formData.waist) || null, chest: parseFloat(formData.chest) || null, hips: parseFloat(formData.hips) || null, calories_consumed: parseFloat(formData.calories_consumed) || null };
-    await base44.entities.ProgressLog.create(entry);
-    const data = await base44.entities.ProgressLog.filter({ user_email: user.email }, "-log_date", 100);
+    await appClient.entities.ProgressLog.create(entry);
+    const data = await appClient.entities.ProgressLog.filter({ user_email: user.email }, "-log_date", 100);
     setLogs(data);
     setShowForm(false);
     setSaving(false);
@@ -54,7 +54,7 @@ export default function Progress() {
     return data.filter(l => new Date(l.log_date) >= cutoff);
   };
 
-  const filtered = filterByPeriod(logs).sort((a, b) => new Date(a.log_date) - new Date(b.log_date));
+  const filtered = filterByPeriod(logs).sort((a, b) => new Date(a.log_date).getTime() - new Date(b.log_date).getTime());
   const chartData = filtered.map(l => ({
     date: format(new Date(l.log_date), "dd/MM"),
     weight: l.weight || null,
@@ -72,7 +72,8 @@ export default function Progress() {
     { key: "calories", label: "Calorias", unit: "kcal", color: "#FF6B35", icon: Flame },
   ].filter(m => filtered.some(l => l[m.key === "calories" ? "calories_consumed" : m.key]));
 
-  const CustomTooltip = ({ active, payload, label }) => {
+  const CustomTooltip = (props) => {
+    const { active, payload, label } = props || {};
     if (active && payload?.length) {
       return (
         <div className="card-glass px-3 py-2 text-xs" style={{ border: "1px solid var(--border-color)" }}>
@@ -90,7 +91,7 @@ export default function Progress() {
 
   const latestWeight = logs.find(l => l.weight)?.weight;
   const firstWeight = [...logs].reverse().find(l => l.weight)?.weight;
-  const weightChange = latestWeight && firstWeight ? (latestWeight - firstWeight).toFixed(1) : null;
+  const weightChange = latestWeight && firstWeight ? Number((latestWeight - firstWeight).toFixed(1)) : null;
 
   return (
     <div className="p-4 lg:p-8 pb-24 lg:pb-8 max-w-3xl mx-auto animate-fade-up">
@@ -110,7 +111,7 @@ export default function Progress() {
       <div className="grid grid-cols-3 gap-3 mb-6">
         {[
           { label: "Peso Atual", value: latestWeight ? `${latestWeight}kg` : "–", color: "#00D4AA" },
-          { label: "Variação", value: weightChange ? `${weightChange > 0 ? "+" : ""}${weightChange}kg` : "–", color: parseFloat(weightChange) < 0 ? "#00D4AA" : "#FF6B35" },
+          { label: "Variação", value: weightChange !== null ? `${weightChange > 0 ? "+" : ""}${weightChange}kg` : "–", color: weightChange !== null && weightChange < 0 ? "#00D4AA" : "#FF6B35" },
           { label: "Registros", value: logs.length, color: "#A78BFA" }
         ].map(s => (
           <div key={s.label} className="card-glass p-3 text-center">

@@ -1,10 +1,8 @@
 import { useState, useEffect } from "react";
-import { base44 } from "@/api/base44Client";
+import { appClient } from "@/api/appClient";
 import { createPageUrl } from "@/utils";
 import { RefreshCw, Lightbulb, Moon } from "lucide-react";
 import MealCard from "@/components/diet/MealCard";
-import LoadingSpinner from "@/components/ui/LoadingSpinner";
-import GeneratingLoader from "@/components/ui/GeneratingLoader";
 
 const MEAL_ORDER = ["cafe_manha", "almoco", "lanche_tarde", "jantar", "ceia"];
 const DAYS = ["DOM", "SEG", "TER", "QUA", "QUI", "SEX", "SAB"];
@@ -29,12 +27,12 @@ export default function Diet() {
   useEffect(() => { init(); }, []);
 
   async function init() {
-    const u = await base44.auth.me().catch(() => null);
-    if (!u) { base44.auth.redirectToLogin(createPageUrl("Diet")); return; }
+    const u = await appClient.auth.me().catch(() => null);
+    if (!u) { appClient.auth.redirectToLogin(createPageUrl("Diet")); return; }
     setUser(u);
     const [profiles, diets] = await Promise.all([
-      base44.entities.UserProfile.filter({ user_email: u.email }),
-      base44.entities.DietPlan.filter({ user_email: u.email })
+      appClient.entities.UserProfile.filter({ user_email: u.email }),
+      appClient.entities.DietPlan.filter({ user_email: u.email })
     ]);
     if (profiles.length) setProfile(profiles[0]);
     if (diets.length) {
@@ -394,7 +392,7 @@ JSON:{"daily_plan":{"cafe_manha":{"name":"str","time":"07:00","calories":${mealC
     const results1 = await Promise.all(
       batch1.map(({ day, isTraining, targetCals, proteinG, carbG, fatG, dayCtx }) => {
         const { prompt, schema } = buildDayPrompt(day, isTraining, targetCals, proteinG, carbG, fatG, dayCtx, []);
-        return base44.integrations.Core.InvokeLLM({ model: "gpt_5_mini", prompt, response_json_schema: schema })
+        return appClient.integrations.Core.InvokeLLM({ model: "gpt_5_mini", prompt, response_json_schema: schema })
           .then(res => ({ day, res }));
       })
     );
@@ -405,7 +403,7 @@ JSON:{"daily_plan":{"cafe_manha":{"name":"str","time":"07:00","calories":${mealC
     const results2 = await Promise.all(
       batch2.map(({ day, isTraining, targetCals, proteinG, carbG, fatG, dayCtx }) => {
         const { prompt, schema } = buildDayPrompt(day, isTraining, targetCals, proteinG, carbG, fatG, dayCtx, []);
-        return base44.integrations.Core.InvokeLLM({ model: "gpt_5_mini", prompt, response_json_schema: schema })
+        return appClient.integrations.Core.InvokeLLM({ model: "gpt_5_mini", prompt, response_json_schema: schema })
           .then(res => ({ day, res }));
       })
     );
@@ -434,7 +432,7 @@ JSON:{"daily_plan":{"cafe_manha":{"name":"str","time":"07:00","calories":${mealC
       : "Sem restrições alimentares específicas.";
 
     const { tdee: tdeeForTips, proteinG: pG, carbG: cG, fatG: fG } = calcDietParams(profile, true);
-    const tipsRes = await base44.integrations.Core.InvokeLLM({
+    const tipsRes = await appClient.integrations.Core.InvokeLLM({
       model: "gpt_5_mini",
       prompt: `Nutricionista esportivo. 5 dicas práticas e personalizadas para: ${profile.sex}, ${profile.age}a, ${profile.weight}kg, ${profile.biotype}, objetivo ${profile.main_goal}, treino ${profile.weekly_frequency}x/sem. TDEE:${tdeeForTips}kcal, proteína:${pG}g/dia. Restrições:${profile.food_restrictions?.join(",")||"nenhuma"}. Dicas objetivas, numéricas quando possível, sem mencionar alimentos proibidos. JSON: {"health_tips":["dica 1","dica 2","dica 3","dica 4","dica 5"]}`,
       response_json_schema: { type: "object", properties: { health_tips: { type: "array", items: { type: "string" } } } }
@@ -444,20 +442,20 @@ JSON:{"daily_plan":{"cafe_manha":{"name":"str","time":"07:00","calories":${mealC
 
     const updated = { week_plan, health_tips: tipsRes.health_tips || [], user_email: user.email, generated_at: new Date().toISOString() };
 
-    const existingDiets = await base44.entities.DietPlan.filter({ user_email: user.email });
+    const existingDiets = await appClient.entities.DietPlan.filter({ user_email: user.email });
     // Limpa duplicatas
     if (existingDiets.length > 1) {
       for (let i = 1; i < existingDiets.length; i++) {
-        await base44.entities.DietPlan.delete(existingDiets[i].id);
+        await appClient.entities.DietPlan.delete(existingDiets[i].id);
       }
     }
     const currentId = planId || existingDiets[0]?.id;
     let savedPlan;
     if (currentId) {
-      await base44.entities.DietPlan.update(currentId, updated);
+      await appClient.entities.DietPlan.update(currentId, updated);
       savedPlan = { ...updated, id: currentId };
     } else {
-      savedPlan = await base44.entities.DietPlan.create(updated);
+      savedPlan = await appClient.entities.DietPlan.create(updated);
     }
     // Força re-render limpando estado antes de setar novo plano
     setPlan(null);
@@ -477,7 +475,7 @@ JSON:{"daily_plan":{"cafe_manha":{"name":"str","time":"07:00","calories":${mealC
       .flatMap(([, m]) => m.ingredients?.map(i => i.name) || []).join(", ");
     const restrictions = profile.food_restrictions?.length > 0 ? `PROIBIDO: ${profile.food_restrictions.join(", ")}.` : "";
     const isTraining = profile?.training_days?.includes(selectedDay);
-    const res = await base44.integrations.Core.InvokeLLM({
+    const res = await appClient.integrations.Core.InvokeLLM({
       prompt: `Substitua a refeição "${mealKey}" por alternativa equivalente. Perfil: ${buildContext(profile, isTraining)}. ${restrictions} NÃO use os mesmos alimentos já presentes nas outras refeições do dia: ${currentIngredients}. JSON: {"meal":{"name":"str","time":"str","calories":0,"protein":0,"carbs":0,"fat":0,"ingredients":[{"name":"str","quantity":"str","calories":0,"protein":0,"carbs":0,"fat":0}]}}`,
       response_json_schema: { type: "object", properties: { meal: { type: "object" } } }
     });
@@ -486,7 +484,7 @@ JSON:{"daily_plan":{"cafe_manha":{"name":"str","time":"07:00","calories":${mealC
     updatedDayPlan[mealKey] = res.meal;
     const recalc = recalcTotals(updatedDayPlan);
     updatedWeekPlan[selectedDay] = { ...updatedWeekPlan[selectedDay], ...recalc };
-    await base44.entities.DietPlan.update(planId, { week_plan: updatedWeekPlan });
+    await appClient.entities.DietPlan.update(planId, { week_plan: updatedWeekPlan });
     setPlan({ ...plan, week_plan: updatedWeekPlan });
   }
 
@@ -498,7 +496,7 @@ JSON:{"daily_plan":{"cafe_manha":{"name":"str","time":"07:00","calories":${mealC
     const allIngredients = Object.values(currentDayPlan).flatMap(m => m.ingredients?.map(i => i.name) || []).join(", ");
     const restrictions = profile.food_restrictions?.length > 0 ? `PROIBIDO: ${profile.food_restrictions.join(", ")}.` : "";
     const isTraining2 = profile?.training_days?.includes(selectedDay);
-    const res = await base44.integrations.Core.InvokeLLM({
+    const res = await appClient.integrations.Core.InvokeLLM({
       prompt: `Substitua "${ingredient.name}" (${ingredient.quantity}, ${ingredient.calories}kcal) por equivalente DIFERENTE. Perfil: ${buildContext(profile, isTraining2)}. ${restrictions} NÃO use nenhum destes ingredientes já no plano: ${allIngredients}. JSON: {"ingredient":{"name":"str","quantity":"str","calories":0,"protein":0,"carbs":0,"fat":0}}`,
       response_json_schema: { type: "object", properties: { ingredient: { type: "object" } } }
     });
@@ -509,7 +507,7 @@ JSON:{"daily_plan":{"cafe_manha":{"name":"str","time":"07:00","calories":${mealC
     updatedDayPlan[mealKey] = { ...updatedDayPlan[mealKey], ...mealTotals };
     const recalc = recalcTotals(updatedDayPlan);
     updatedWeekPlan[selectedDay] = { ...updatedWeekPlan[selectedDay], ...recalc };
-    await base44.entities.DietPlan.update(planId, { week_plan: updatedWeekPlan });
+    await appClient.entities.DietPlan.update(planId, { week_plan: updatedWeekPlan });
     setPlan({ ...plan, week_plan: updatedWeekPlan });
   }
 

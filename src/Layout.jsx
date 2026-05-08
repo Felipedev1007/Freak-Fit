@@ -1,9 +1,9 @@
 import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { createPageUrl } from "@/utils";
-import { base44 } from "@/api/base44Client";
+import { appClient } from "@/api/appClient";
 import {
-  LayoutDashboard, Dumbbell, Utensils, TrendingUp, Camera, Settings, User, LogOut, Menu, X, Zap
+  LayoutDashboard, Dumbbell, Utensils, TrendingUp, Camera, Settings, LogOut, Menu, X, Zap
 } from "lucide-react";
 
 const navItems = [
@@ -20,10 +20,10 @@ export default function Layout({ children, currentPageName }) {
   const [profile, setProfile] = useState(null);
 
   const loadProfile = () => {
-    base44.auth.me().then(u => {
+    appClient.auth.me().then(u => {
       setUser(u);
       if (u) {
-        base44.entities.UserProfile.filter({ user_email: u.email }).then(profiles => {
+        appClient.entities.UserProfile.filter({ user_email: u.email }).then(profiles => {
           if (profiles.length > 0) setProfile(profiles[0]);
         });
       }
@@ -61,8 +61,16 @@ export default function Layout({ children, currentPageName }) {
     "--text-muted": "#4A4A5A",
   };
 
+  const rootStyle = {
+    background: "var(--bg-dark)",
+    color: "var(--text-primary)",
+    "--primary": primaryColor,
+    "--primary-dark": `${primaryColor}cc`,
+    ...themeVars
+  };
+
   return (
-    <div className="min-h-screen" style={{ background: "var(--bg-dark)", color: "var(--text-primary)", "--primary": primaryColor, "--primary-dark": `${primaryColor}cc`, ...themeVars }}>
+    <div className="min-h-screen" style={rootStyle}>
       <style>{`
         .nav-active { color: ${primaryColor} !important; }
         .nav-active .nav-dot { background: ${primaryColor}; display: block; }
@@ -77,7 +85,7 @@ export default function Layout({ children, currentPageName }) {
           <div className="w-8 h-8 rounded-lg flex items-center justify-center" style={{ background: primaryColor }}>
             <Zap size={16} color="#000" />
           </div>
-          <span className="font-bold text-lg tracking-tight" style={{ color: "var(--text-primary)" }}>YForge Fit</span>
+          <span className="font-bold text-lg tracking-tight" style={{ color: "var(--text-primary)" }}>FreakFit</span>
         </div>
 
         <nav className="flex-1 px-3">
@@ -119,7 +127,7 @@ export default function Layout({ children, currentPageName }) {
                   {profile?.nickname || user.full_name?.split(" ")[0] || "Usuário"}
                 </p>
               </div>
-              <button onClick={() => base44.auth.logout()} style={{ color: "var(--text-muted)" }}
+              <button onClick={() => appClient.auth.logout()} style={{ color: "var(--text-muted)" }}
                 className="hover:opacity-70 transition-opacity">
                 <LogOut size={14} />
               </button>
@@ -135,7 +143,7 @@ export default function Layout({ children, currentPageName }) {
           <div className="w-7 h-7 rounded-lg flex items-center justify-center" style={{ background: primaryColor }}>
             <Zap size={14} color="#000" />
           </div>
-          <span className="font-bold text-base" style={{ color: "var(--text-primary)" }}>YForge Fit</span>
+          <span className="font-bold text-base" style={{ color: "var(--text-primary)" }}>FreakFit</span>
         </div>
         <button onClick={() => setMobileOpen(!mobileOpen)} style={{ color: "var(--text-secondary)" }}>
           {mobileOpen ? <X size={20} /> : <Menu size={20} />}

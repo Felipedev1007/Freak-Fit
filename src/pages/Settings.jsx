@@ -1,10 +1,10 @@
 import { useState, useEffect, useRef } from "react";
-import { base44 } from "@/api/base44Client";
+import { appClient } from "@/api/appClient";
 import { createPageUrl } from "@/utils";
 import { useNavigate } from "react-router-dom";
 import { Save, LogOut, Trash2, User, Camera, Bell, ClipboardList, Dumbbell } from "lucide-react";
-import LoadingSpinner from "@/components/ui/LoadingSpinner";
-import ImageCropModal from "@/components/ui/ImageCropModal";
+import LoadingSpinner from "@/components/ui/feedback/LoadingSpinner";
+import ImageCropModal from "@/components/ui/media/ImageCropModal";
 
 const COLORS = [
   { label: "Teal", value: "#00D4AA" },
@@ -32,10 +32,10 @@ export default function Settings() {
   useEffect(() => { init(); }, []);
 
   async function init() {
-    const u = await base44.auth.me().catch(() => null);
-    if (!u) { base44.auth.redirectToLogin(createPageUrl("Settings")); return; }
+    const u = await appClient.auth.me().catch(() => null);
+    if (!u) { appClient.auth.redirectToLogin(createPageUrl("Settings")); return; }
     setUser(u);
-    const profiles = await base44.entities.UserProfile.filter({ user_email: u.email });
+    const profiles = await appClient.entities.UserProfile.filter({ user_email: u.email });
     if (profiles.length) {
       const p = profiles[0];
       setProfile(p);
@@ -71,8 +71,8 @@ export default function Settings() {
     setUploadingPhoto(true);
     setCropModalSrc(null);
     const file = new File([blob], "avatar.jpg", { type: "image/jpeg" });
-    const { file_url } = await base44.integrations.Core.UploadFile({ file });
-    await base44.entities.UserProfile.update(profileId, { avatar_url: file_url });
+    const { file_url } = await appClient.integrations.Core.UploadFile({ file });
+    await appClient.entities.UserProfile.update(profileId, { avatar_url: file_url });
     setForm(p => ({ ...p, avatar_url: file_url }));
     window.dispatchEvent(new Event("profile-updated"));
     setUploadingPhoto(false);
@@ -123,7 +123,7 @@ export default function Settings() {
       training_location: form.training_location || profile?.training_location
     };
 
-    await base44.entities.UserProfile.update(profileId, updatedData);
+    await appClient.entities.UserProfile.update(profileId, updatedData);
     window.dispatchEvent(new Event("profile-updated"));
 
     // Dieta: regenera apenas se mudou peso, altura ou objetivo
@@ -141,12 +141,12 @@ export default function Settings() {
     if ((dietChanged || workoutChanged) && user) {
       setRegenPlans(true);
       if (workoutChanged) {
-        const workouts = await base44.entities.WorkoutPlan.filter({ user_email: user.email });
-        for (const w of workouts) await base44.entities.WorkoutPlan.delete(w.id);
+        const workouts = await appClient.entities.WorkoutPlan.filter({ user_email: user.email });
+        for (const w of workouts) await appClient.entities.WorkoutPlan.delete(w.id);
       }
       if (dietChanged) {
-        const diets = await base44.entities.DietPlan.filter({ user_email: user.email });
-        for (const d of diets) await base44.entities.DietPlan.delete(d.id);
+        const diets = await appClient.entities.DietPlan.filter({ user_email: user.email });
+        for (const d of diets) await appClient.entities.DietPlan.delete(d.id);
       }
       setRegenPlans(false);
       navigate(createPageUrl("Dashboard"));
@@ -160,10 +160,10 @@ export default function Settings() {
 
   async function handleResetPlan() {
     if (!user) return;
-    const workouts = await base44.entities.WorkoutPlan.filter({ user_email: user.email });
-    const diets = await base44.entities.DietPlan.filter({ user_email: user.email });
-    for (const w of workouts) await base44.entities.WorkoutPlan.delete(w.id);
-    for (const d of diets) await base44.entities.DietPlan.delete(d.id);
+    const workouts = await appClient.entities.WorkoutPlan.filter({ user_email: user.email });
+    const diets = await appClient.entities.DietPlan.filter({ user_email: user.email });
+    for (const w of workouts) await appClient.entities.WorkoutPlan.delete(w.id);
+    for (const d of diets) await appClient.entities.DietPlan.delete(d.id);
     alert("Planos resetados! Acesse o Dashboard para gerar novos planos.");
   }
 
@@ -314,7 +314,7 @@ export default function Settings() {
             </div>
             <div className="flex gap-2 flex-wrap">
               {ALL_DAYS.map(day => {
-                const maxReached = form.training_days.length >= parseInt(form.weekly_frequency || 7) && !form.training_days.includes(day);
+                const maxReached = form.training_days.length >= parseInt(String(form.weekly_frequency || 7)) && !form.training_days.includes(day);
                 return (
                 <button key={day} onClick={() => toggleDay(day)}
                   disabled={maxReached}
@@ -443,7 +443,7 @@ export default function Settings() {
         </p>
       </div>
 
-      <button onClick={() => base44.auth.logout()}
+      <button onClick={() => appClient.auth.logout()}
         className="flex items-center justify-center gap-2 w-full py-3 rounded-xl text-sm border transition-all"
         style={{ border: "1px solid var(--border-color)", color: "var(--text-secondary)" }}>
         <LogOut size={14} /> Sair da conta

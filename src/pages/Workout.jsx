@@ -1,9 +1,9 @@
 import { useState, useEffect } from "react";
-import { base44 } from "@/api/base44Client";
+import { appClient } from "@/api/appClient";
 import { createPageUrl } from "@/utils";
-import { RefreshCw, Moon, Zap } from "lucide-react";
+import { RefreshCw, Moon } from "lucide-react";
 import ExerciseCard from "@/components/workout/ExerciseCard";
-import LoadingSpinner from "@/components/ui/LoadingSpinner";
+import LoadingSpinner from "@/components/ui/feedback/LoadingSpinner";
 
 const DAYS = ["DOM", "SEG", "TER", "QUA", "QUI", "SEX", "SAB"];
 const DAY_LABELS = { DOM: "Domingo", SEG: "Segunda", TER: "Terça", QUA: "Quarta", QUI: "Quinta", SEX: "Sexta", SAB: "Sábado" };
@@ -24,13 +24,13 @@ export default function Workout() {
   useEffect(() => { init(); }, []);
 
   async function init() {
-    const u = await base44.auth.me().catch(() => null);
-    if (!u) { base44.auth.redirectToLogin(createPageUrl("Workout")); return; }
+    const u = await appClient.auth.me().catch(() => null);
+    if (!u) { appClient.auth.redirectToLogin(createPageUrl("Workout")); return; }
     setUser(u);
-    const profiles = await base44.entities.UserProfile.filter({ user_email: u.email });
+    const profiles = await appClient.entities.UserProfile.filter({ user_email: u.email });
     const p = profiles[0] || null;
     if (p) setProfile(p);
-    const workouts = await base44.entities.WorkoutPlan.filter({ user_email: u.email });
+    const workouts = await appClient.entities.WorkoutPlan.filter({ user_email: u.email });
     if (workouts.length) {
       const existingPlan = workouts[0];
       // Verifica se os dias do plano batem com os dias do perfil
@@ -240,7 +240,7 @@ ${injuries}`;
     // Gera todos os dias de treino EM PARALELO
     const trainingResults = await Promise.all(
       trainingDaysList.map(({ day, focus }) =>
-        base44.integrations.Core.InvokeLLM({
+        appClient.integrations.Core.InvokeLLM({
           model: "gpt_5_mini",
           prompt: `Personal trainer especializado em calistenia e musculação. Crie treino de ${DAY_FULL[day]} com foco "${focus}". Responda APENAS JSON válido, sem texto extra.
 
@@ -278,11 +278,11 @@ JSON:{"name":"Treino ${focus}","focus":"${focus}","rest_day":false,"exercises":[
 
     const updated = { week_plan, user_email: u.email, generated_at: new Date().toISOString() };
     if (currentId) {
-      await base44.entities.WorkoutPlan.update(currentId, updated);
+      await appClient.entities.WorkoutPlan.update(currentId, updated);
       setPlan({ ...updated, id: currentId });
       setPlanId(currentId);
     } else {
-      const wp = await base44.entities.WorkoutPlan.create(updated);
+      const wp = await appClient.entities.WorkoutPlan.create(updated);
       setPlan(wp); setPlanId(wp.id);
     }
   }
@@ -299,9 +299,9 @@ JSON:{"name":"Treino ${focus}","focus":"${focus}","rest_day":false,"exercises":[
     if (!profile || !user) return;
     setRegenerating(true);
     setGenProgress(5);
-    const existing = await base44.entities.WorkoutPlan.filter({ user_email: user.email });
+    const existing = await appClient.entities.WorkoutPlan.filter({ user_email: user.email });
     if (existing.length > 1) {
-      for (let i = 1; i < existing.length; i++) await base44.entities.WorkoutPlan.delete(existing[i].id);
+      for (let i = 1; i < existing.length; i++) await appClient.entities.WorkoutPlan.delete(existing[i].id);
     }
     await generateWeekPlan(profile, user, planId || existing[0]?.id || null);
     setGenProgress(100);
@@ -316,7 +316,7 @@ JSON:{"name":"Treino ${focus}","focus":"${focus}","rest_day":false,"exercises":[
     const isOutdoor = profile.training_location === "ar_livre";
     const level = profile.experience_level || "iniciante";
     const levelSpec = { iniciante: { sets: 3, reps: "12-15", rest: 75 }, intermediario: { sets: 4, reps: "8-12", rest: 90 }, experiente: { sets: 5, reps: "6-10", rest: 120 } }[level];
-    const res = await base44.integrations.Core.InvokeLLM({
+    const res = await appClient.integrations.Core.InvokeLLM({
       model: "gpt_5_mini",
       prompt: `Personal trainer. Substitua "${exercise.name}" (${exercise.muscle_group}) por exercício DIFERENTE do mesmo grupo muscular. Responda APENAS JSON.
 
@@ -331,7 +331,7 @@ JSON:{"exercise":{"name":"str","muscle_group":"str","sets":${levelSpec.sets},"re
     });
     const updatedWeekPlan = JSON.parse(JSON.stringify(plan.week_plan));
     updatedWeekPlan[dayKey].exercises[exerciseIdx] = res.exercise;
-    await base44.entities.WorkoutPlan.update(planId, { week_plan: updatedWeekPlan });
+    await appClient.entities.WorkoutPlan.update(planId, { week_plan: updatedWeekPlan });
     setPlan({ ...plan, week_plan: updatedWeekPlan });
   }
 

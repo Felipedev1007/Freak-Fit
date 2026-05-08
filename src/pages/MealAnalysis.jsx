@@ -1,9 +1,9 @@
 import { useState, useEffect } from "react";
-import { base44 } from "@/api/base44Client";
+import { appClient } from "@/api/appClient";
 import { createPageUrl } from "@/utils";
 import { Camera, Upload, ChevronDown, ChevronUp } from "lucide-react";
-import LoadingSpinner from "@/components/ui/LoadingSpinner";
-import GeneratingLoader from "@/components/ui/GeneratingLoader";
+import LoadingSpinner from "@/components/ui/feedback/LoadingSpinner";
+import GeneratingLoader from "@/components/ui/feedback/GeneratingLoader";
 
 export default function MealAnalysis() {
   const [user, setUser] = useState(null);
@@ -16,10 +16,10 @@ export default function MealAnalysis() {
   useEffect(() => { init(); }, []);
 
   async function init() {
-    const u = await base44.auth.me().catch(() => null);
-    if (!u) { base44.auth.redirectToLogin(createPageUrl("MealAnalysis")); return; }
+    const u = await appClient.auth.me().catch(() => null);
+    if (!u) { appClient.auth.redirectToLogin(createPageUrl("MealAnalysis")); return; }
     setUser(u);
-    const analyses = await base44.entities.MealAnalysis.filter({ user_email: u.email }, "-analyzed_at", 20);
+    const analyses = await appClient.entities.MealAnalysis.filter({ user_email: u.email }, "-analyzed_at", 20);
     setHistory(analyses);
     setLoading(false);
   }
@@ -50,10 +50,10 @@ export default function MealAnalysis() {
 
     // Convert to JPEG to ensure compatibility (handles avif, heic, webp, etc.)
     const file = await convertToJpeg(rawFile);
-    const { file_url } = await base44.integrations.Core.UploadFile({ file });
+    const { file_url } = await appClient.integrations.Core.UploadFile({ file });
 
     // Etapa 1: análise visual com claude (visão)
-    const visualAnalysis = await base44.integrations.Core.InvokeLLM({
+    const visualAnalysis = await appClient.integrations.Core.InvokeLLM({
       model: "claude_sonnet_4_6",
       prompt: `Você é um nutricionista analisando uma foto de refeição. Analise a imagem e descreva detalhadamente:
 1. Cada alimento/ingrediente visível (seja específico: "pizza de queijo com molho de tomate", "fatia de pizza margherita", etc.)
@@ -68,7 +68,7 @@ Seja minucioso. Inclua TODOS os itens visíveis, mesmo molhos e guarnições.`,
     });
 
     // Etapa 2: calcular valores nutricionais com base na descrição visual
-    const res = await base44.integrations.Core.InvokeLLM({
+    const res = await appClient.integrations.Core.InvokeLLM({
       prompt: `Você é um nutricionista. Com base nesta descrição de refeição, calcule os valores nutricionais exatos.
 
 DESCRIÇÃO DA REFEIÇÃO:
@@ -130,7 +130,7 @@ INSTRUÇÕES:
       }
     });
 
-    // Recalcula totais a partir dos itens caso a IA retorne zeros nos totais
+    // Recalcula totais a partir dos itens caso a estimativa retorne zeros nos totais
     const foods = res.identified_foods || [];
     const calcTotal = (field) => foods.reduce((sum, f) => sum + (f[field] || 0), 0);
     const totalCalories = res.total_calories > 0 ? res.total_calories : calcTotal("calories");
@@ -150,7 +150,7 @@ INSTRUÇÕES:
       analyzed_at: new Date().toISOString()
     };
 
-    const analysis = await base44.entities.MealAnalysis.create(analysisData);
+    const analysis = await appClient.entities.MealAnalysis.create(analysisData);
 
     // Usa os dados locais para exibição imediata, garantindo que os valores calculados apareçam
     const displayResult = { ...analysisData, id: analysis.id };
@@ -163,7 +163,7 @@ INSTRUÇÕES:
 
   const macroColors = { protein: "#A78BFA", carbs: "#F59E0B", fat: "#FF6B35" };
 
-  // Normaliza campos do alimento para lidar com variações de nome retornadas pela IA
+  // Normaliza campos do alimento para lidar com variações de nome retornadas pela estimativa
   function getFoodCalories(food) {
     return food.calories ?? food.kcal ?? food.calorias ?? food.energy ?? 0;
   }
@@ -200,7 +200,7 @@ INSTRUÇÕES:
       {/* Analyzing loader */}
       {analyzing && (
         <div className="mb-6">
-          <GeneratingLoader message="Analisando sua refeição com IA..." estimatedSeconds={30} />
+          <GeneratingLoader message="Analisando sua refeição..." estimatedSeconds={30} />
         </div>
       )}
 

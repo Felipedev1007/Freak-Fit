@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { base44 } from "@/api/base44Client";
+import { appClient } from "@/api/appClient";
 import { createPageUrl } from "@/utils";
 import { motion, AnimatePresence } from "framer-motion";
 import { ChevronRight, ChevronLeft, Check, Zap } from "lucide-react";
@@ -114,8 +114,8 @@ export default function Onboarding() {
 
   async function handleFinish() {
     setSaving(true);
-    const u = await base44.auth.me().catch(() => null);
-    if (!u) { base44.auth.redirectToLogin(createPageUrl("Onboarding")); return; }
+    const u = await appClient.auth.me().catch(() => null);
+    if (!u) { appClient.auth.redirectToLogin(createPageUrl("Onboarding")); return; }
 
     const profileData = {
       user_email: u.email,
@@ -137,11 +137,11 @@ export default function Onboarding() {
       onboarding_completed: true,
     };
 
-    const existing = await base44.entities.UserProfile.filter({ user_email: u.email });
+    const existing = await appClient.entities.UserProfile.filter({ user_email: u.email });
     if (existing.length > 0) {
-      await base44.entities.UserProfile.update(existing[0].id, profileData);
+      await appClient.entities.UserProfile.update(existing[0].id, profileData);
     } else {
-      await base44.entities.UserProfile.create(profileData);
+      await appClient.entities.UserProfile.create(profileData);
     }
     window.location.href = createPageUrl("Dashboard");
   }
@@ -155,7 +155,7 @@ export default function Onboarding() {
         <div className="w-8 h-8 rounded-lg flex items-center justify-center" style={{ background: "#00D4AA" }}>
           <Zap size={16} color="#000" />
         </div>
-        <span className="font-bold text-lg" style={{ color: "var(--text-primary)" }}>YForge Fit</span>
+        <span className="font-bold text-lg" style={{ color: "var(--text-primary)" }}>FreakFit</span>
       </div>
 
       {/* Progress bar */}
@@ -372,7 +372,7 @@ export default function Onboarding() {
                 <h2 className="text-2xl font-bold mb-1" style={{ color: "var(--text-primary)" }}>Restrições alimentares?</h2>
                 <p className="text-sm mb-2" style={{ color: "var(--text-secondary)" }}>Alergias e preferências que afetam sua dieta</p>
                 <p className="text-xs mb-6 px-3 py-2 rounded-xl" style={{ background: "rgba(245,158,11,0.1)", color: "#F59E0B" }}>
-                  🚫 A IA nunca incluirá ingredientes que contenham os itens selecionados
+                  🚫 Seus planos não incluirão ingredientes que contenham os itens selecionados
                 </p>
                 <div className="grid grid-cols-2 gap-3">
                   {FOOD_RESTRICTIONS.map(r => {
