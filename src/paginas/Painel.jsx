@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+﻿import { useState, useEffect } from "react";
 import { appClient } from "@/api/appClient";
 import { createPageUrl } from "@/utils";
 import { Link } from "react-router-dom";
@@ -6,7 +6,7 @@ import { Dumbbell, Utensils, TrendingUp, Camera, ChevronRight, Flame, Droplets, 
 import LoadingSpinner from "@/components/ui/feedback/LoadingSpinner";
 import GeneratingLoader from "@/components/ui/feedback/GeneratingLoader";
 
-export default function Dashboard() {
+export default function Painel() {
   const [user, setUser] = useState(null);
   const [profile, setProfile] = useState(null);
   const [workoutPlan, setWorkoutPlan] = useState(null);
@@ -24,11 +24,11 @@ export default function Dashboard() {
   async function init() {
     setLoading(true);
     const u = await appClient.auth.me().catch(() => null);
-    if (!u) { appClient.auth.redirectToLogin(createPageUrl("Dashboard")); return; }
+    if (!u) { appClient.auth.redirectToLogin(createPageUrl("Painel")); return; }
     setUser(u);
     const profiles = await appClient.entities.UserProfile.filter({ user_email: u.email });
     if (!profiles.length || !profiles[0].onboarding_completed) {
-      window.location.href = createPageUrl("Onboarding");
+      window.location.href = createPageUrl("BoasVindas");
       return;
     }
     const p = profiles[0];
@@ -240,7 +240,7 @@ export default function Dashboard() {
             {todayWorkout.exercises?.length || 0} exercícios
           </span>
         )}
-        <Link to={createPageUrl("Workout")}
+        <Link to={createPageUrl("Treino")}
           className="flex items-center justify-center gap-2 w-full py-3 rounded-xl text-sm font-semibold"
           style={{ background: "#00D4AA", color: "#000" }}>
           {todayWorkout?.rest_day ? "Ver semana" : "Ver treino"} <ChevronRight size={16} />
@@ -275,7 +275,7 @@ export default function Dashboard() {
             ))}
           </div>
         )}
-        <Link to={createPageUrl("Diet")}
+        <Link to={createPageUrl("Dieta")}
           className="flex items-center justify-center gap-2 w-full py-3 rounded-xl text-sm font-semibold border"
           style={{ border: "1px solid var(--border-color)", color: "var(--text-secondary)" }}>
           Ver dieta completa <ChevronRight size={16} />
@@ -284,7 +284,7 @@ export default function Dashboard() {
 
       {/* Quick Actions */}
       <div className="grid grid-cols-2 gap-3 mb-4">
-        <Link to={createPageUrl("Progress")} className="card-glass p-4 flex items-center gap-3 transition-all">
+        <Link to={createPageUrl("Progresso")} className="card-glass p-4 flex items-center gap-3 transition-all">
           <div className="w-9 h-9 rounded-xl flex items-center justify-center" style={{ background: "rgba(56,189,248,0.1)" }}>
             <TrendingUp size={18} style={{ color: "#38BDF8" }} />
           </div>
@@ -293,7 +293,7 @@ export default function Dashboard() {
             <p className="text-xs" style={{ color: "var(--text-muted)" }}>Registrar evolução</p>
           </div>
         </Link>
-        <Link to={createPageUrl("MealAnalysis")} className="card-glass p-4 flex items-center gap-3 transition-all">
+        <Link to={createPageUrl("AnaliseRefeicao")} className="card-glass p-4 flex items-center gap-3 transition-all">
           <div className="w-9 h-9 rounded-xl flex items-center justify-center" style={{ background: "rgba(167,139,250,0.1)" }}>
             <Camera size={18} style={{ color: "#A78BFA" }} />
           </div>

@@ -1,4 +1,4 @@
-import { useState } from "react";
+﻿import { useState } from "react";
 import { ChevronDown, ChevronUp, RefreshCw } from "lucide-react";
 import LoadingSpinner from "@/components/ui/feedback/LoadingSpinner";
 
@@ -18,7 +18,7 @@ const MEAL_NAMES = {
   ceia: "Ceia"
 };
 
-export default function MealCard({ mealKey, meal, onReplaceMeal, onReplaceIngredient }) {
+export default function CartaoRefeicao({ mealKey, meal, onReplaceMeal, onReplaceIngredient }) {
   const [expanded, setExpanded] = useState(false);
   const [replacingMeal, setReplacingMeal] = useState(false);
   const [replacingIngredient, setReplacingIngredient] = useState(null);

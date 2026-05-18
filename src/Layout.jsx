@@ -1,23 +1,25 @@
-import { useState, useEffect } from "react";
+﻿import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { createPageUrl } from "@/utils";
 import { appClient } from "@/api/appClient";
+import { useAuth } from "@/lib/AuthContext";
 import {
   LayoutDashboard, Dumbbell, Utensils, TrendingUp, Camera, Settings, LogOut, Menu, X, Zap
 } from "lucide-react";
 
 const navItems = [
-  { label: "Dashboard", icon: LayoutDashboard, page: "Dashboard" },
-  { label: "Treino", icon: Dumbbell, page: "Workout" },
-  { label: "Dieta", icon: Utensils, page: "Diet" },
-  { label: "Progresso", icon: TrendingUp, page: "Progress" },
-  { label: "Refeição", icon: Camera, page: "MealAnalysis" },
+  { label: "Painel", icon: LayoutDashboard, page: "Painel" },
+  { label: "Treino", icon: Dumbbell, page: "Treino" },
+  { label: "Dieta", icon: Utensils, page: "Dieta" },
+  { label: "Progresso", icon: TrendingUp, page: "Progresso" },
+  { label: "Refeição", icon: Camera, page: "AnaliseRefeicao" },
 ];
 
 export default function Layout({ children, currentPageName }) {
   const [user, setUser] = useState(null);
   const [mobileOpen, setMobileOpen] = useState(false);
   const [profile, setProfile] = useState(null);
+  const { logout } = useAuth();
 
   const loadProfile = () => {
     appClient.auth.me().then(u => {
@@ -36,7 +38,7 @@ export default function Layout({ children, currentPageName }) {
     return () => window.removeEventListener("profile-updated", loadProfile);
   }, []);
 
-  const publicPages = ["Onboarding", "Landing"];
+  const publicPages = ["Landing", "Login", "Cadastro", "RecuperarSenha", "BoasVindas"];
   if (publicPages.includes(currentPageName)) return <>{children}</>;
 
   const primaryColor = profile?.primary_color || "#00D4AA";
@@ -107,9 +109,9 @@ export default function Layout({ children, currentPageName }) {
         </nav>
 
         <div className="p-3 border-t" style={{ borderColor: "var(--border-color)" }}>
-          <Link to={createPageUrl("Settings")}
+          <Link to={createPageUrl("Configuracoes")}
             className={`flex items-center gap-3 px-3 py-2.5 rounded-xl mb-1 transition-all`}
-            style={{ color: currentPageName === "Settings" ? primaryColor : "var(--text-secondary)" }}>
+            style={{ color: currentPageName === "Configuracoes" ? primaryColor : "var(--text-secondary)" }}>
             <Settings size={18} />
             <span className="text-sm font-medium">Configurações</span>
           </Link>
@@ -127,7 +129,7 @@ export default function Layout({ children, currentPageName }) {
                   {profile?.nickname || user.full_name?.split(" ")[0] || "Usuário"}
                 </p>
               </div>
-              <button onClick={() => appClient.auth.logout()} style={{ color: "var(--text-muted)" }}
+              <button onClick={logout} style={{ color: "var(--text-muted)" }}
                 className="hover:opacity-70 transition-opacity">
                 <LogOut size={14} />
               </button>
@@ -169,7 +171,7 @@ export default function Layout({ children, currentPageName }) {
                 </Link>
               );
             })}
-            <Link to={createPageUrl("Settings")} onClick={() => setMobileOpen(false)}
+            <Link to={createPageUrl("Configuracoes")} onClick={() => setMobileOpen(false)}
               className="flex items-center gap-3 px-3 py-3 rounded-xl mt-2"
               style={{ color: "var(--text-secondary)", borderTop: "1px solid var(--border-color)" }}>
               <Settings size={18} />

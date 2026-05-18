@@ -1,7 +1,7 @@
-import React, { createContext, useState, useContext, useEffect, useCallback } from 'react';
+﻿import React, { createContext, useState, useContext, useEffect, useCallback } from 'react';
 import { appClient } from '@/api/appClient';
 
-const AuthContext = createContext();
+const AuthContext = createContext(null);
 
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
@@ -23,13 +23,17 @@ export const AuthProvider = ({ children }) => {
       setUser(currentUser);
       setIsAuthenticated(Boolean(currentUser));
     } catch (error) {
-      console.error('User auth check failed:', error);
       setUser(null);
       setIsAuthenticated(false);
-      setAuthError({
-        type: 'unknown',
-        message: error.message || 'Failed to load user',
-      });
+      if (error.type === 'auth_required') {
+        setAuthError(null);
+      } else {
+        console.error('Falha ao verificar autenticação:', error);
+        setAuthError({
+          type: 'unknown',
+          message: error.message || 'Não foi possível carregar o usuário',
+        });
+      }
     } finally {
       setAuthChecked(true);
       setIsLoadingAuth(false);
@@ -50,15 +54,15 @@ export const AuthProvider = ({ children }) => {
     checkAppState();
   }, [checkAppState]);
 
-  const logout = () => {
+  const logout = (redirectUrl = '/') => {
     setUser(null);
     setIsAuthenticated(false);
     setAuthChecked(false);
-    appClient.auth.logout('/Onboarding');
+    appClient.auth.logout(redirectUrl);
   };
 
   const navigateToLogin = () => {
-    appClient.auth.redirectToLogin('/Onboarding');
+    appClient.auth.redirectToLogin('/Painel');
   };
 
   return (

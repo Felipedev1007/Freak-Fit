@@ -1,4 +1,4 @@
-import { useState } from "react";
+﻿import { useState } from "react";
 import { appClient } from "@/api/appClient";
 import { createPageUrl } from "@/utils";
 import { motion, AnimatePresence } from "framer-motion";
@@ -66,7 +66,7 @@ const PHYSICAL_LIMITATIONS = [
 
 const TOTAL_STEPS = 8;
 
-export default function Onboarding() {
+export default function BoasVindas() {
   const [step, setStep] = useState(0);
   const [saving, setSaving] = useState(false);
   const [data, setData] = useState({
@@ -115,7 +115,7 @@ export default function Onboarding() {
   async function handleFinish() {
     setSaving(true);
     const u = await appClient.auth.me().catch(() => null);
-    if (!u) { appClient.auth.redirectToLogin(createPageUrl("Onboarding")); return; }
+    if (!u) { appClient.auth.redirectToLogin(createPageUrl("BoasVindas")); return; }
 
     const profileData = {
       user_email: u.email,
@@ -143,7 +143,7 @@ export default function Onboarding() {
     } else {
       await appClient.entities.UserProfile.create(profileData);
     }
-    window.location.href = createPageUrl("Dashboard");
+    window.location.href = createPageUrl("Painel");
   }
 
   const progress = ((step) / TOTAL_STEPS) * 100;

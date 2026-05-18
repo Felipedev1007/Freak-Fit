@@ -1,11 +1,11 @@
-import { useState, useEffect } from "react";
+﻿import { useState, useEffect } from "react";
 import { appClient } from "@/api/appClient";
 import { createPageUrl } from "@/utils";
 import { Camera, Upload, ChevronDown, ChevronUp } from "lucide-react";
 import LoadingSpinner from "@/components/ui/feedback/LoadingSpinner";
 import GeneratingLoader from "@/components/ui/feedback/GeneratingLoader";
 
-export default function MealAnalysis() {
+export default function AnaliseRefeicao() {
   const [user, setUser] = useState(null);
   const [analyzing, setAnalyzing] = useState(false);
   const [result, setResult] = useState(null);
@@ -17,7 +17,7 @@ export default function MealAnalysis() {
 
   async function init() {
     const u = await appClient.auth.me().catch(() => null);
-    if (!u) { appClient.auth.redirectToLogin(createPageUrl("MealAnalysis")); return; }
+    if (!u) { appClient.auth.redirectToLogin(createPageUrl("AnaliseRefeicao")); return; }
     setUser(u);
     const analyses = await appClient.entities.MealAnalysis.filter({ user_email: u.email }, "-analyzed_at", 20);
     setHistory(analyses);

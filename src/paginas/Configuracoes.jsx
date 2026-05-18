@@ -1,10 +1,11 @@
-import { useState, useEffect, useRef } from "react";
+﻿import { useState, useEffect, useRef } from "react";
 import { appClient } from "@/api/appClient";
 import { createPageUrl } from "@/utils";
 import { useNavigate } from "react-router-dom";
 import { Save, LogOut, Trash2, User, Camera, Bell, ClipboardList, Dumbbell } from "lucide-react";
 import LoadingSpinner from "@/components/ui/feedback/LoadingSpinner";
 import ImageCropModal from "@/components/ui/media/ImageCropModal";
+import { useAuth } from "@/lib/AuthContext";
 
 const COLORS = [
   { label: "Teal", value: "#00D4AA" },
@@ -15,8 +16,9 @@ const COLORS = [
   { label: "Verde", value: "#22C55E" }
 ];
 
-export default function Settings() {
+export default function Configuracoes() {
   const navigate = useNavigate();
+  const { logout } = useAuth();
   const [user, setUser] = useState(null);
   const [profile, setProfile] = useState(null);
   const [profileId, setProfileId] = useState(null);
@@ -33,7 +35,7 @@ export default function Settings() {
 
   async function init() {
     const u = await appClient.auth.me().catch(() => null);
-    if (!u) { appClient.auth.redirectToLogin(createPageUrl("Settings")); return; }
+    if (!u) { appClient.auth.redirectToLogin(createPageUrl("Configuracoes")); return; }
     setUser(u);
     const profiles = await appClient.entities.UserProfile.filter({ user_email: u.email });
     if (profiles.length) {
@@ -149,7 +151,7 @@ export default function Settings() {
         for (const d of diets) await appClient.entities.DietPlan.delete(d.id);
       }
       setRegenPlans(false);
-      navigate(createPageUrl("Dashboard"));
+      navigate(createPageUrl("Painel"));
       return;
     }
 
@@ -164,7 +166,7 @@ export default function Settings() {
     const diets = await appClient.entities.DietPlan.filter({ user_email: user.email });
     for (const w of workouts) await appClient.entities.WorkoutPlan.delete(w.id);
     for (const d of diets) await appClient.entities.DietPlan.delete(d.id);
-    alert("Planos resetados! Acesse o Dashboard para gerar novos planos.");
+    alert("Planos resetados! Acesse o Painel para gerar novos planos.");
   }
 
   if (loading) return <div className="flex items-center justify-center min-h-screen"><LoadingSpinner size={36} /></div>;
@@ -439,11 +441,11 @@ export default function Settings() {
           <Trash2 size={14} /> Resetar Planos de Treino e Dieta
         </button>
         <p className="text-xs" style={{ color: "var(--text-muted)" }}>
-          Isso irá deletar seus planos atuais e gerar novos ao acessar o Dashboard.
+          Isso irá deletar seus planos atuais e gerar novos ao acessar o Painel.
         </p>
       </div>
 
-      <button onClick={() => appClient.auth.logout()}
+      <button onClick={() => logout("/")}
         className="flex items-center justify-center gap-2 w-full py-3 rounded-xl text-sm border transition-all"
         style={{ border: "1px solid var(--border-color)", color: "var(--text-secondary)" }}>
         <LogOut size={14} /> Sair da conta

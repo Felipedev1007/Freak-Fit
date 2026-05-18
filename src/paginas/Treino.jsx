@@ -1,8 +1,8 @@
-import { useState, useEffect } from "react";
+﻿import { useState, useEffect } from "react";
 import { appClient } from "@/api/appClient";
 import { createPageUrl } from "@/utils";
 import { RefreshCw, Moon } from "lucide-react";
-import ExerciseCard from "@/components/workout/ExerciseCard";
+import CartaoExercicio from "@/components/treino/CartaoExercicio";
 import LoadingSpinner from "@/components/ui/feedback/LoadingSpinner";
 
 const DAYS = ["DOM", "SEG", "TER", "QUA", "QUI", "SEX", "SAB"];
@@ -10,7 +10,7 @@ const DAY_LABELS = { DOM: "Domingo", SEG: "Segunda", TER: "Terça", QUA: "Quarta
 const DAY_NAMES = { DOM: "Dom", SEG: "Seg", TER: "Ter", QUA: "Qua", QUI: "Qui", SEX: "Sex", SAB: "Sáb" };
 const DAY_FULL = { DOM: "Domingo", SEG: "Segunda", TER: "Terça", QUA: "Quarta", QUI: "Quinta", SEX: "Sexta", SAB: "Sábado" };
 
-export default function Workout() {
+export default function Treino() {
   const [user, setUser] = useState(null);
   const [profile, setProfile] = useState(null);
   const [plan, setPlan] = useState(null);
@@ -25,7 +25,7 @@ export default function Workout() {
 
   async function init() {
     const u = await appClient.auth.me().catch(() => null);
-    if (!u) { appClient.auth.redirectToLogin(createPageUrl("Workout")); return; }
+    if (!u) { appClient.auth.redirectToLogin(createPageUrl("Treino")); return; }
     setUser(u);
     const profiles = await appClient.entities.UserProfile.filter({ user_email: u.email });
     const p = profiles[0] || null;
@@ -457,7 +457,7 @@ JSON:{"exercise":{"name":"str","muscle_group":"str","sets":${levelSpec.sets},"re
                 </div>
                 <div className="space-y-3">
                   {dayData.exercises?.map((exercise, idx) => (
-                    <ExerciseCard
+                    <CartaoExercicio
                       key={idx}
                       exercise={exercise}
                       onReplace={() => handleReplaceExercise(selectedDay, idx)}

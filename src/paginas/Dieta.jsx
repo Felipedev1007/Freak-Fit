@@ -1,8 +1,8 @@
-import { useState, useEffect } from "react";
+﻿import { useState, useEffect } from "react";
 import { appClient } from "@/api/appClient";
 import { createPageUrl } from "@/utils";
 import { RefreshCw, Lightbulb, Moon } from "lucide-react";
-import MealCard from "@/components/diet/MealCard";
+import CartaoRefeicao from "@/components/dieta/CartaoRefeicao";
 
 const MEAL_ORDER = ["cafe_manha", "almoco", "lanche_tarde", "jantar", "ceia"];
 const DAYS = ["DOM", "SEG", "TER", "QUA", "QUI", "SEX", "SAB"];
@@ -13,7 +13,7 @@ const DAY_FULL = { DOM: "Domingo", SEG: "Segunda-feira", TER: "Terça-feira", QU
 const PROTEIN_VARIATIONS = ["frango grelhado", "peixe assado", "carne bovina magra", "ovos mexidos", "atum", "salmão", "patinho moído"];
 const CARB_VARIATIONS = ["arroz integral", "batata doce", "macarrão integral", "quinoa", "aveia", "mandioca", "pão integral"];
 
-export default function Diet() {
+export default function Dieta() {
   const [user, setUser] = useState(null);
   const [profile, setProfile] = useState(null);
   const [plan, setPlan] = useState(null);
@@ -28,7 +28,7 @@ export default function Diet() {
 
   async function init() {
     const u = await appClient.auth.me().catch(() => null);
-    if (!u) { appClient.auth.redirectToLogin(createPageUrl("Diet")); return; }
+    if (!u) { appClient.auth.redirectToLogin(createPageUrl("Dieta")); return; }
     setUser(u);
     const [profiles, diets] = await Promise.all([
       appClient.entities.UserProfile.filter({ user_email: u.email }),
@@ -703,7 +703,7 @@ JSON:{"daily_plan":{"cafe_manha":{"name":"str","time":"07:00","calories":${mealC
 
               <div className="space-y-3 mb-4">
                 {MEAL_ORDER.filter(k => dayPlan[k]).map(mealKey => (
-                  <MealCard
+                  <CartaoRefeicao
                     key={mealKey}
                     mealKey={mealKey}
                     meal={dayPlan[mealKey]}

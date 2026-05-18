@@ -4,6 +4,7 @@ import { hasSupabaseConfig, supabase } from './supabaseClient';
 
 const STORAGE_PREFIX = "freakfit";
 const USER_KEY = `${STORAGE_PREFIX}:session-user`;
+const ACCOUNTS_KEY = `${STORAGE_PREFIX}:auth-accounts`;
 const SUPABASE_ENTITY_TABLE = "freakfit_entities";
 const SUPABASE_UPLOAD_BUCKET = "freakfit-uploads";
 const ENTITY_NAMES = [
@@ -61,14 +62,90 @@ function createId() {
 
 function getCurrentUser() {
   const existing = readJson(USER_KEY, null);
-  if (existing?.email) return existing;
+  if (existing?.email) {
+    const accounts = readAccounts();
+    const accountExists = accounts.some((account) => account.email === normalizeEmail(existing.email));
+    const isLegacyAutoUser = existing.id === "local-user" || existing.email === "usuario@freakfit.local";
+    if (accountExists && !isLegacyAutoUser) return existing;
 
-  const user = {
-    id: "local-user",
-    email: "usuario@freakfit.local",
-    full_name: "Usuario FreakFit",
-    role: "user",
+    if (typeof window !== "undefined") {
+      window.localStorage.removeItem(USER_KEY);
+    }
+  }
+
+  const error = new Error("Autenticação necessária.");
+  error.type = "auth_required";
+  throw error;
+}
+
+function sanitizeUser(account) {
+  if (!account) return null;
+  return {
+    id: account.id,
+    email: account.email,
+    full_name: account.full_name,
+    avatar_url: account.avatar_url || "",
+    auth_provider: account.auth_provider || "email",
+    role: account.role || "user",
   };
+}
+
+function normalizeEmail(email) {
+  return String(email || "").trim().toLowerCase();
+}
+
+function readAccounts() {
+  return readJson(ACCOUNTS_KEY, []);
+}
+
+function writeAccounts(accounts) {
+  writeJson(ACCOUNTS_KEY, accounts);
+}
+
+function toHex(buffer) {
+  return Array.from(new Uint8Array(buffer))
+    .map((byte) => byte.toString(16).padStart(2, "0"))
+    .join("");
+}
+
+async function sha256(value) {
+  if (typeof crypto === "undefined" || !crypto.subtle) {
+    let hash = 0;
+    for (let i = 0; i < value.length; i++) {
+      hash = ((hash << 5) - hash) + value.charCodeAt(i);
+      hash |= 0;
+    }
+    return `fallback-${Math.abs(hash).toString(16)}`;
+  }
+
+  const encoded = new TextEncoder().encode(value);
+  const hash = await crypto.subtle.digest("SHA-256", encoded);
+  return toHex(hash);
+}
+
+async function hashPassword(password, salt = createId()) {
+  return {
+    salt,
+    password_hash: await sha256(`${salt}:${password}`),
+  };
+}
+
+function validateAuthFields({ name, email, password }, mode = "register") {
+  const cleanEmail = normalizeEmail(email);
+  if (mode === "register" && String(name || "").trim().length < 2) {
+    throw new Error("Informe seu nome completo.");
+  }
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(cleanEmail)) {
+    throw new Error("Informe um e-mail válido.");
+  }
+  if (password != null && String(password).length < 8) {
+    throw new Error("A senha deve ter pelo menos 8 caracteres.");
+  }
+  return cleanEmail;
+}
+
+function persistSession(account) {
+  const user = sanitizeUser(account);
   writeJson(USER_KEY, user);
   return user;
 }
@@ -842,15 +919,102 @@ const client = {
     async me() {
       return clone(getCurrentUser());
     },
-    logout(redirectUrl = "/Onboarding") {
+    async register({ name, email, password }) {
+      const cleanEmail = validateAuthFields({ name, email, password }, "register");
+      const accounts = readAccounts();
+      if (accounts.some((account) => account.email === cleanEmail)) {
+        throw new Error("Já existe uma conta cadastrada com este e-mail.");
+      }
+
+      const passwordData = await hashPassword(password);
+      const account = {
+        id: createId(),
+        email: cleanEmail,
+        full_name: String(name || "").trim(),
+        ...passwordData,
+        auth_provider: "email",
+        role: "user",
+        created_at: new Date().toISOString(),
+      };
+      writeAccounts([account, ...accounts]);
+      return persistSession(account);
+    },
+    async login({ email, password }) {
+      const cleanEmail = validateAuthFields({ email, password }, "login");
+      const accounts = readAccounts();
+      const account = accounts.find((item) => item.email === cleanEmail);
+      if (!account || account.auth_provider !== "email") {
+        throw new Error("E-mail ou senha inválidos.");
+      }
+
+      const passwordData = await hashPassword(password, account.salt);
+      if (passwordData.password_hash !== account.password_hash) {
+        throw new Error("E-mail ou senha inválidos.");
+      }
+      return persistSession(account);
+    },
+    async loginWithProvider(provider = "google") {
+      const cleanProvider = provider === "github" ? "github" : "google";
+      const email = `${cleanProvider}@freakfit.ai`;
+      const accounts = readAccounts();
+      const existing = accounts.find((account) => account.email === email);
+      if (existing) return persistSession(existing);
+
+      const account = {
+        id: createId(),
+        email,
+        full_name: cleanProvider === "github" ? "Atleta GitHub" : "Atleta Google",
+        auth_provider: cleanProvider,
+        role: "user",
+        created_at: new Date().toISOString(),
+      };
+      writeAccounts([account, ...accounts]);
+      return persistSession(account);
+    },
+    async requestPasswordReset(email) {
+      const cleanEmail = validateAuthFields({ email }, "reset");
+      const accounts = readAccounts();
+      const account = accounts.find((item) => item.email === cleanEmail);
+      if (!account || account.auth_provider !== "email") {
+        throw new Error("Não encontramos uma conta com este e-mail.");
+      }
+      const resetCode = String(Math.floor(100000 + Math.random() * 900000));
+      const updated = accounts.map((item) =>
+        item.email === cleanEmail
+          ? { ...item, reset_code: resetCode, reset_requested_at: new Date().toISOString() }
+          : item
+      );
+      writeAccounts(updated);
+      return { reset_code: resetCode };
+    },
+    async resetPassword({ email, code, password }) {
+      const cleanEmail = validateAuthFields({ email, password }, "reset");
+      const accounts = readAccounts();
+      const account = accounts.find((item) => item.email === cleanEmail);
+      if (!account || account.reset_code !== String(code || "").trim()) {
+        throw new Error("Código de recuperação inválido.");
+      }
+      const passwordData = await hashPassword(password);
+      const updatedAccount = {
+        ...account,
+        ...passwordData,
+        reset_code: "",
+        reset_requested_at: "",
+        updated_at: new Date().toISOString(),
+      };
+      writeAccounts(accounts.map((item) => item.email === cleanEmail ? updatedAccount : item));
+      return persistSession(updatedAccount);
+    },
+    logout(redirectUrl = "/") {
       if (typeof window !== "undefined") {
         window.localStorage.removeItem(USER_KEY);
-        window.location.href = redirectUrl || "/Onboarding";
+        window.location.href = redirectUrl || "/";
       }
     },
-    redirectToLogin(returnUrl = "/Onboarding") {
+    redirectToLogin(returnUrl = "/Painel") {
       if (typeof window !== "undefined") {
-        window.location.href = returnUrl || "/Onboarding";
+        const next = encodeURIComponent(returnUrl || "/Painel");
+        window.location.href = `/Login?next=${next}`;
       }
     },
   },

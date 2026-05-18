@@ -1,6 +1,6 @@
 # FreakFit
 
-Aplicacao web para montar treino, dieta, progresso e analise de refeicoes direto no navegador.
+Aplicação web para montar treino, dieta, progresso e análise de refeições direto no navegador.
 
 ## Como rodar
 
@@ -9,7 +9,7 @@ npm install
 npm run dev
 ```
 
-## Variaveis de ambiente
+## Variáveis de ambiente
 
 Crie um `.env.local` quando quiser ativar Supabase e IA do Base44:
 
@@ -22,13 +22,13 @@ VITE_BASE44_APP_BASE_URL=https://seu-app.base44.app
 VITE_BASE44_FUNCTIONS_VERSION=prod
 ```
 
-Sem essas variaveis, o app continua rodando com fallback local no navegador.
+Sem essas variáveis, o app continua rodando com fallback local no navegador.
 
 ## Scripts
 
 - `npm run dev`: inicia o Vite em modo desenvolvimento.
-- `npm run build`: gera a versao de producao.
+- `npm run build`: gera a versão de produção.
 - `npm run preview`: serve a build localmente.
 - `npm run lint`: executa o ESLint.
 
-Os dados do usuario ficam salvos no `localStorage` do navegador, sem servico externo obrigatorio.
+Os dados do usuário ficam salvos no `localStorage` do navegador, sem serviço externo obrigatório.

@@ -2,7 +2,7 @@ import { Toaster } from "@/components/ui/feedback/toaster"
 import { QueryClientProvider } from '@tanstack/react-query'
 import { queryClientInstance } from '@/lib/query-client'
 import { pagesConfig } from './pages.config'
-import { BrowserRouter as Router, Route, Routes } from 'react-router-dom';
+import { BrowserRouter as Router, Navigate, Route, Routes } from 'react-router-dom';
 import PageNotFound from './lib/PageNotFound';
 import { AuthProvider, useAuth } from '@/lib/AuthContext';
 import UserNotRegisteredError from '@/components/UserNotRegisteredError';
@@ -10,10 +10,27 @@ import UserNotRegisteredError from '@/components/UserNotRegisteredError';
 const { Pages, Layout, mainPage } = pagesConfig;
 const mainPageKey = mainPage ?? Object.keys(Pages)[0];
 const MainPage = mainPageKey ? Pages[mainPageKey] : <></>;
+const legacyPageRedirects = {
+  Dashboard: "Painel",
+  Workout: "Treino",
+  Diet: "Dieta",
+  MealAnalysis: "AnaliseRefeicao",
+  Onboarding: "BoasVindas",
+  Progress: "Progresso",
+  Settings: "Configuracoes",
+};
+const publicPageNames = new Set(["Landing", "Login", "Cadastro", "RecuperarSenha"]);
 
 const LayoutWrapper = ({ children, currentPageName }) => Layout ?
   <Layout currentPageName={currentPageName}>{children}</Layout>
   : <>{children}</>;
+
+const PrivatePage = ({ children }) => {
+  const { isAuthenticated } = useAuth();
+  return isAuthenticated ? children : <Navigate to="/Login" replace />;
+};
+
+const PublicPage = ({ children }) => children;
 
 const AuthenticatedApp = () => {
   const { isLoadingAuth, isLoadingPublicSettings, authError, navigateToLogin } = useAuth();
@@ -42,20 +59,33 @@ const AuthenticatedApp = () => {
   return (
     <Routes>
       <Route path="/" element={
-        <LayoutWrapper currentPageName={mainPageKey}>
-          <MainPage />
-        </LayoutWrapper>
+        <PublicPage>
+          <LayoutWrapper currentPageName={mainPageKey}>
+            <MainPage />
+          </LayoutWrapper>
+        </PublicPage>
       } />
-      {Object.entries(Pages).map(([path, Page]) => (
-        <Route
-          key={path}
-          path={`/${path}`}
-          element={
+      {Object.entries(Pages).map(([path, Page]) => {
+        const isPublic = publicPageNames.has(path);
+        const pageElement = (
             <LayoutWrapper currentPageName={path}>
               <Page />
             </LayoutWrapper>
-          }
-        />
+        );
+        return (
+          <Route
+            key={path}
+            path={`/${path}`}
+            element={
+              isPublic
+                ? <PublicPage>{pageElement}</PublicPage>
+                : <PrivatePage>{pageElement}</PrivatePage>
+            }
+          />
+        );
+      })}
+      {Object.entries(legacyPageRedirects).map(([from, to]) => (
+        <Route key={from} path={`/${from}`} element={<Navigate to={`/${to}`} replace />} />
       ))}
       <Route path="*" element={<PageNotFound />} />
     </Routes>

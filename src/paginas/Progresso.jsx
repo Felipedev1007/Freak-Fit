@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+﻿import { useState, useEffect } from "react";
 import { appClient } from "@/api/appClient";
 import { createPageUrl } from "@/utils";
 import { Plus, TrendingUp, Scale, Ruler, Flame } from "lucide-react";
@@ -13,7 +13,7 @@ const PERIODS = [
   { key: "year", label: "Ano" }
 ];
 
-export default function Progress() {
+export default function Progresso() {
   const [user, setUser] = useState(null);
   const [logs, setLogs] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -27,7 +27,7 @@ export default function Progress() {
 
   async function init() {
     const u = await appClient.auth.me().catch(() => null);
-    if (!u) { appClient.auth.redirectToLogin(createPageUrl("Progress")); return; }
+    if (!u) { appClient.auth.redirectToLogin(createPageUrl("Progresso")); return; }
     setUser(u);
     const data = await appClient.entities.ProgressLog.filter({ user_email: u.email }, "-log_date", 100);
     setLogs(data);

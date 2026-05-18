@@ -1,8 +1,8 @@
-import { useState } from "react";
+﻿import { useState } from "react";
 import { RefreshCw, Play, ChevronDown, ChevronUp, Clock, Repeat } from "lucide-react";
 import LoadingSpinner from "@/components/ui/feedback/LoadingSpinner";
 
-export default function ExerciseCard({ exercise, onReplace }) {
+export default function CartaoExercicio({ exercise, onReplace }) {
   const [expanded, setExpanded] = useState(false);
   const [replacing, setReplacing] = useState(false);
   const [videoModal, setVideoModal] = useState(false);

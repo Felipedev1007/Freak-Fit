@@ -1,74 +1,82 @@
-/**
- * pages.config.js - Page routing configuration
+﻿/**
+ * pages.config.js - Configuração de rotas das páginas
  * 
- * This file is AUTO-GENERATED. Do not add imports or modify PAGES manually.
- * Pages are auto-registered when you create files in the ./pages/ folder.
+ * Este arquivo é AUTO-GERADO. Não adicione imports nem modifique PAGES manualmente.
+ * As páginas são registradas quando você cria arquivos na pasta ./paginas/.
  * 
- * THE ONLY EDITABLE VALUE: mainPage
- * This controls which page is the landing page (shown when users visit the app).
+ * ÚNICO VALOR EDITÁVEL: mainPage
+ * Controla qual página abre primeiro quando usuários acessam o app.
  * 
- * Example file structure:
+ * Exemplo de estrutura:
  * 
- *   import HomePage from './pages/HomePage';
- *   import Dashboard from './pages/Dashboard';
- *   import Settings from './pages/Settings';
+ *   import Inicio from './paginas/Inicio';
+ *   import Painel from './paginas/Painel';
+ *   import Configuracoes from './paginas/Configuracoes';
  *   
  *   export const PAGES = {
- *       "HomePage": HomePage,
- *       "Dashboard": Dashboard,
- *       "Settings": Settings,
+ *       "Inicio": Inicio,
+ *       "Painel": Painel,
+ *       "Configuracoes": Configuracoes,
  *   }
  *   
  *   export const pagesConfig = {
- *       mainPage: "HomePage",
+ *       mainPage: "Inicio",
  *       Pages: PAGES,
  *   };
  * 
- * Example with Layout (wraps all pages):
+ * Exemplo com Layout (envolve todas as páginas):
  *
- *   import Home from './pages/Home';
- *   import Settings from './pages/Settings';
+ *   import Inicio from './paginas/Inicio';
+ *   import Configuracoes from './paginas/Configuracoes';
  *   import __Layout from './Layout.jsx';
  *
  *   export const PAGES = {
- *       "Home": Home,
- *       "Settings": Settings,
+ *       "Inicio": Inicio,
+ *       "Configuracoes": Configuracoes,
  *   }
  *
  *   export const pagesConfig = {
- *       mainPage: "Home",
+ *       mainPage: "Inicio",
  *       Pages: PAGES,
  *       Layout: __Layout,
  *   };
  *
- * To change the main page from HomePage to Dashboard, use find_replace:
- *   Old: mainPage: "HomePage",
- *   New: mainPage: "Dashboard",
+ * Para alterar a página inicial de Inicio para Painel, use find_replace:
+ *   Old: mainPage: "Inicio",
+ *   New: mainPage: "Painel",
  *
- * The mainPage value must match a key in the PAGES object exactly.
+ * O valor de mainPage deve corresponder exatamente a uma chave em PAGES.
  */
-import Dashboard from './pages/Dashboard';
-import Diet from './pages/Diet';
-import MealAnalysis from './pages/MealAnalysis';
-import Onboarding from './pages/Onboarding';
-import Progress from './pages/Progress';
-import Settings from './pages/Settings';
-import Workout from './pages/Workout';
+import Painel from './paginas/Painel';
+import Landing from './paginas/Landing';
+import Login from './paginas/Login';
+import Cadastro from './paginas/Cadastro';
+import RecuperarSenha from './paginas/RecuperarSenha';
+import Dieta from './paginas/Dieta';
+import AnaliseRefeicao from './paginas/AnaliseRefeicao';
+import BoasVindas from './paginas/BoasVindas';
+import Progresso from './paginas/Progresso';
+import Configuracoes from './paginas/Configuracoes';
+import Treino from './paginas/Treino';
 import __Layout from './Layout.jsx';
 
 
 export const PAGES = {
-    "Dashboard": Dashboard,
-    "Diet": Diet,
-    "MealAnalysis": MealAnalysis,
-    "Onboarding": Onboarding,
-    "Progress": Progress,
-    "Settings": Settings,
-    "Workout": Workout,
+    "Landing": Landing,
+    "Login": Login,
+    "Cadastro": Cadastro,
+    "RecuperarSenha": RecuperarSenha,
+    "Painel": Painel,
+    "Dieta": Dieta,
+    "AnaliseRefeicao": AnaliseRefeicao,
+    "BoasVindas": BoasVindas,
+    "Progresso": Progresso,
+    "Configuracoes": Configuracoes,
+    "Treino": Treino,
 }
 
 export const pagesConfig = {
-    mainPage: "Onboarding",
+    mainPage: "Landing",
     Pages: PAGES,
     Layout: __Layout,
 };
