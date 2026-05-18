@@ -2,7 +2,7 @@ import { Link } from "react-router-dom";
 import { motion } from "framer-motion";
 import {
   ArrowRight, BrainCircuit, Camera, Check, ChevronRight, Dumbbell, Github,
-  LineChart, ScanLine, ShieldCheck, Sparkles, Star, Target, Utensils, Zap
+  LineChart, ShieldCheck, Sparkles, Star, Target, Utensils, Zap
 } from "lucide-react";
 
 const fadeUp = {
@@ -122,56 +122,6 @@ function PhoneMockup() {
   );
 }
 
-function FoodScanner() {
-  return (
-    <div className="grid gap-6 lg:grid-cols-[1fr_0.85fr] lg:items-center">
-      <div className="relative overflow-hidden rounded-[2rem] border border-white/10 bg-white/[0.04] p-4">
-        <div className="relative aspect-[4/3] overflow-hidden rounded-[1.4rem] bg-[radial-gradient(circle_at_center,#242a34,#090b10_70%)]">
-          <div className="absolute left-1/2 top-1/2 h-52 w-52 -translate-x-1/2 -translate-y-1/2 rounded-full border border-white/10 bg-gradient-to-br from-amber-200 via-emerald-200 to-rose-200 p-4 shadow-[0_0_50px_rgba(0,245,184,0.18)]">
-            <div className="h-full w-full rounded-full bg-[#f6f0df] p-5">
-              <div className="grid h-full grid-cols-2 gap-3">
-                <div className="rounded-full bg-emerald-500/70" />
-                <div className="rounded-full bg-orange-500/80" />
-                <div className="rounded-full bg-white shadow-inner" />
-                <div className="rounded-full bg-red-500/75" />
-              </div>
-            </div>
-          </div>
-          <motion.div
-            animate={{ y: ["8%", "82%", "8%"] }}
-            transition={{ duration: 3.2, repeat: Infinity, ease: "easeInOut" }}
-            className="absolute left-6 right-6 h-px bg-cyan-300 shadow-[0_0_22px_rgba(103,232,249,0.9)]"
-          />
-          <div className="absolute inset-6 rounded-2xl border border-[#00f5b8]/35" />
-          <ScanLine className="absolute right-8 top-8 text-[#00f5b8]" size={28} />
-        </div>
-      </div>
-      <div className="space-y-3">
-        {[
-          ["Calorias", "612 kcal", "#00f5b8"],
-          ["Proteínas", "42g", "#67e8f9"],
-          ["Carboidratos", "58g", "#fbbf24"],
-          ["Gorduras", "19g", "#fb7185"],
-        ].map(([label, value, color], index) => (
-          <motion.div
-            key={label}
-            initial={{ opacity: 0, x: 24 }}
-            whileInView={{ opacity: 1, x: 0 }}
-            viewport={{ once: true }}
-            transition={{ delay: index * 0.08 }}
-            className="rounded-2xl border border-white/10 bg-white/[0.05] p-4"
-          >
-            <div className="flex items-center justify-between">
-              <span className="text-sm text-white/60">{label}</span>
-              <span className="text-xl font-bold" style={{ color }}>{value}</span>
-            </div>
-          </motion.div>
-        ))}
-      </div>
-    </div>
-  );
-}
-
 export default function Landing() {
   return (
     <div className="min-h-screen overflow-hidden bg-[#05070a] text-white">
@@ -206,7 +156,6 @@ export default function Landing() {
             </p>
             <div className="mt-8 flex flex-col gap-3 sm:flex-row">
               <GlowButton>Começar Agora</GlowButton>
-              <GlowButton to="#demo" variant="secondary">Ver Demonstração</GlowButton>
             </div>
             <div className="mt-8 grid grid-cols-3 gap-4 max-w-xl">
               {["+10 mil usuários", "97% satisfação", "4.9/5 estrelas"].map((item) => (
@@ -244,17 +193,6 @@ export default function Landing() {
                 <p className="mt-2 text-sm leading-6 text-white/55">{feature.text}</p>
               </motion.div>
             ))}
-          </div>
-        </section>
-
-        <section id="demo" className="mx-auto max-w-7xl px-5 py-16">
-          <div className="rounded-[2rem] border border-white/10 bg-white/[0.035] p-6 shadow-2xl shadow-black/30 md:p-10">
-            <div className="mb-8 max-w-2xl">
-              <p className="mb-2 text-sm font-semibold text-cyan-300">Análise nutricional por imagem</p>
-              <h2 className="text-3xl font-bold md:text-5xl">Aponte a câmera. A IA calcula o prato.</h2>
-              <p className="mt-4 text-sm leading-6 text-white/55">Identifique alimentos, calorias, proteínas, carboidratos e gorduras com uma experiência visual de scanner inteligente.</p>
-            </div>
-            <FoodScanner />
           </div>
         </section>
 
