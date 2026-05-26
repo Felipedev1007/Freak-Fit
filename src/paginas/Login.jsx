@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Link, useNavigate, useSearchParams } from "react-router-dom";
+import { Link, useLocation, useNavigate, useSearchParams } from "react-router-dom";
 import { motion } from "framer-motion";
 import { Github, Mail, Lock, Chrome, ArrowRight } from "lucide-react";
 import { appClient } from "@/api/appClient";
@@ -69,9 +69,11 @@ function SocialButtons({ onSocial }) {
 
 export default function Login() {
   const navigate = useNavigate();
+  const location = useLocation();
   const [params] = useSearchParams();
   const { checkUserAuth, isAuthenticated, user, logout } = useAuth();
-  const [form, setForm] = useState({ email: "", password: "" });
+  const registeredEmail = location.state?.accountCreated ? location.state?.email || "" : "";
+  const [form, setForm] = useState({ email: registeredEmail, password: "" });
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const next = params.get("next") || "/Painel";
@@ -114,6 +116,11 @@ export default function Login() {
       <p className="mt-1 text-sm text-white/50">
         Use e-mail e senha. Se ainda não tiver registro, crie sua conta pelo link abaixo.
       </p>
+      {location.state?.accountCreated && (
+        <p className="mt-5 rounded-2xl border border-[#00f5b8]/20 bg-[#00f5b8]/10 p-3 text-sm text-[#00f5b8]">
+          Conta criada com sucesso. Entre com seu e-mail e senha para continuar.
+        </p>
+      )}
       {isAuthenticated && (
         <div className="mt-5 rounded-2xl border border-[#00f5b8]/20 bg-[#00f5b8]/10 p-4">
           <p className="text-sm font-semibold text-[#00f5b8]">Sessão ativa</p>

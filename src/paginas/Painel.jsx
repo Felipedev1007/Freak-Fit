@@ -6,6 +6,23 @@ import { Dumbbell, Utensils, TrendingUp, Camera, ChevronRight, Flame, Droplets, 
 import LoadingSpinner from "@/components/ui/feedback/LoadingSpinner";
 import GeneratingLoader from "@/components/ui/feedback/GeneratingLoader";
 
+const DIET_MEAL_TIMING_RULES = `
+REGRAS OBRIGATÓRIAS POR HORÁRIO:
+- cafe_manha 07:00: comida típica de café da manhã, como ovos, aveia, tapioca, cuscuz, pão integral, iogurte, frutas, queijo cottage, leite ou alternativas permitidas. NÃO use arroz com frango, peixe com legumes, carne com batata ou marmita.
+- almoco 12:00: almoço completo com proteína magra, carboidrato base, feijão/leguminosas quando fizer sentido, salada e legumes.
+- lanche_tarde 15:30: lanche prático, como iogurte com fruta, vitamina, sanduíche integral, tapioca pequena, fruta com pasta de amendoim, whey/proteína vegetal, aveia ou castanhas.
+- jantar 19:00: jantar realista, com proteína, legumes/verduras e carboidrato ajustado à meta, evitando comida de café da manhã.
+- ceia 21:30: refeição leve antes de dormir, como iogurte proteico, cottage, caseína/whey, leite, ovos, tofu, abacate, chia ou castanhas. NÃO use prato pesado de almoço/jantar.`;
+const DIET_DAY_VARIETY = {
+  DOM: "café: omelete com tapioca e mamão | almoço: frango, arroz integral, feijão e salada | lanche: iogurte com banana e aveia | jantar: peixe com legumes e batata doce | ceia: cottage ou iogurte com chia",
+  SEG: "café: overnight oats com iogurte e banana | almoço: patinho moído, mandioca e legumes | lanche: sanduíche integral com atum e fruta | jantar: frango com quinoa e salada | ceia: leite/proteína com abacate",
+  TER: "café: cuscuz com ovos e fruta | almoço: peixe, arroz, lentilha e salada | lanche: vitamina de fruta com aveia | jantar: carne magra com abobrinha e purê | ceia: ovos ou tofu com chia",
+  QUA: "café: pão integral com ovos e cottage | almoço: frango com macarrão integral e legumes | lanche: tapioca pequena com queijo ou frango | jantar: omelete com legumes | ceia: iogurte com linhaça",
+  QUI: "café: panqueca de banana com aveia | almoço: salmão/peixe, batata e salada | lanche: fruta com pasta de amendoim e proteína | jantar: frango com legumes e arroz integral | ceia: cottage com castanhas",
+  SEX: "café: tapioca com ovos e vitamina | almoço: carne magra, arroz, feijão e salada | lanche: iogurte com granola e morangos | jantar: tilápia ou tofu com quinoa | ceia: caseína/iogurte/leite com chia",
+  SAB: "café: mingau de aveia com banana | almoço: frango ou grão-de-bico com batata doce | lanche: wrap integral com proteína e fruta | jantar: sopa proteica com legumes | ceia: abacate com chia ou iogurte",
+};
+
 export default function Painel() {
   const [user, setUser] = useState(null);
   const [profile, setProfile] = useState(null);
@@ -56,7 +73,17 @@ export default function Painel() {
         ? `Limitações físicas: ${p.physical_limitations.join(", ")} — evite exercícios pesados nessas regiões.`
         : "Sem limitações físicas.";
       const DAY_FULL_W = { DOM: "Domingo", SEG: "Segunda", TER: "Terça", QUA: "Quarta", QUI: "Quinta", SEX: "Sexta", SAB: "Sábado" };
-      const focusList = ["Peito e Tríceps", "Costas e Bíceps", "Pernas e Glúteos", "Ombros e Core", "Braços e Abdômen", "Corpo Todo", "Costas e Core"];
+      const focusList = p.sex === "feminino"
+        ? [
+            "Glúteos e Posterior de Coxa",
+            "Quadríceps, Adutores e Panturrilhas",
+            "Glúteos e Abdutor/Adutor",
+            "Costas, Ombros e Core",
+            "Pernas Completas com Ênfase em Glúteos",
+            "Posterior Completo e Glúteos",
+            "Corpo Todo com Foco Inferior",
+          ]
+        : ["Peito e Tríceps", "Costas e Bíceps", "Pernas e Glúteos", "Ombros e Core", "Braços e Abdômen", "Corpo Todo", "Costas e Core"];
 
       const week_plan = {};
       let focusIdx = 0;
@@ -74,7 +101,7 @@ export default function Painel() {
         setGeneratingMsg(`Criando treino: ${DAY_FULL_W[day]}... (${ti + 1}/${trainingDaysList.length})`);
         const notRepeat = usedExercises.length > 0 ? `NÃO use: ${usedExercises.join(", ")}.` : "";
         const res = await appClient.integrations.Core.InvokeLLM({
-          prompt: `Personal trainer: crie treino para ${DAY_FULL_W[day]}, foco em "${focus}". Perfil: ${ctx}. ${limitations} ${notRepeat} Crie 5 exercícios ÚNICOS. JSON: {"name":"Treino de ${focus}","focus":"${focus}","rest_day":false,"exercises":[{"name":"string","muscle_group":"string","sets":3,"reps":"string","rest_seconds":60,"instructions":"string","video_search":"string"}]}`,
+          prompt: `Personal trainer: crie treino para ${DAY_FULL_W[day]}, foco em "${focus}". Perfil: ${ctx}. ${limitations} ${notRepeat} Crie 5 exercícios ÚNICOS. ${p.sex === "feminino" ? "PERFIL FEMININO: priorize glúteos, posterior, quadríceps, adutores, abdutores, panturrilhas e core. Quando o foco for inferior, use compostos + isoladores de glúteos/pernas e mantenha peito/tríceps com volume reduzido." : ""} JSON: {"name":"Treino de ${focus}","focus":"${focus}","rest_day":false,"exercises":[{"name":"string","muscle_group":"string","sets":3,"reps":"string","rest_seconds":60,"instructions":"string","video_search":"string"}]}`,
           response_json_schema: { type: "object", properties: { name: { type: "string" }, focus: { type: "string" }, rest_day: { type: "boolean" }, exercises: { type: "array", items: { type: "object" } } } }
         });
         if (res.exercises) res.exercises.forEach(e => { if (e.name) usedExercises.push(e.name); });
@@ -95,6 +122,8 @@ export default function Painel() {
       const week_plan = {};
       const usedProteins = [];
       const usedCarbs = [];
+      const usedMeals = [];
+      const usedIngredients = [];
 
       for (let i = 0; i < DAYS.length; i++) {
         const day = DAYS[i];
@@ -103,17 +132,26 @@ export default function Painel() {
           ? "Dia de treino: adicione +150kcal extras em carboidratos."
           : "Dia de descanso: mantenha calorias base.";
         const prevSummary = usedProteins.length > 0
-          ? `Proteínas já usadas: ${usedProteins.join(", ")}. Carboidratos já usados: ${usedCarbs.join(", ")}. Use DIFERENTES.`
+          ? `Proteínas já usadas: ${usedProteins.join(", ")}. Carboidratos já usados: ${usedCarbs.join(", ")}. Refeições já usadas: ${usedMeals.join(", ")}. Ingredientes já usados: ${usedIngredients.slice(0, 40).join(", ")}. Use combinações DIFERENTES.`
           : "Primeiro dia, escolha livremente.";
+        const daySuggestion = DIET_DAY_VARIETY[day] || DIET_DAY_VARIETY.SEG;
 
         setGeneratingMsg(`Gerando dieta: ${DAY_FULL[day]}... (${i + 1}/7)`);
 
         const res = await appClient.integrations.Core.InvokeLLM({
-          prompt: `Nutricionista: plano alimentar para ${DAY_FULL[day]}. Perfil: ${ctx}. ${calNote} ${prevSummary} ${restrictions} Use ingredientes VARIADOS. JSON: {"daily_plan":{"cafe_manha":{"name":"str","time":"07:00","calories":0,"protein":0,"carbs":0,"fat":0,"ingredients":[{"name":"str","quantity":"str","calories":0,"protein":0,"carbs":0,"fat":0}]},"almoco":{"name":"str","time":"12:00","calories":0,"protein":0,"carbs":0,"fat":0,"ingredients":[]},"lanche_tarde":{"name":"str","time":"15:30","calories":0,"protein":0,"carbs":0,"fat":0,"ingredients":[]},"jantar":{"name":"str","time":"19:00","calories":0,"protein":0,"carbs":0,"fat":0,"ingredients":[]},"ceia":{"name":"str","time":"21:30","calories":0,"protein":0,"carbs":0,"fat":0,"ingredients":[]}},"main_protein":"str","main_carb":"str"}`,
+          prompt: `Nutricionista: plano alimentar para ${DAY_FULL[day]}. Perfil: ${ctx}. ${calNote} ${prevSummary} ${restrictions} Use ingredientes VARIADOS. SUGESTÃO DE VARIEDADE PARA ESTE DIA: ${daySuggestion}. ${DIET_MEAL_TIMING_RULES} Cada refeição deve parecer natural para o horário e ainda seguir a dieta/macros. NÃO repita o mesmo cardápio dos dias anteriores. JSON: {"daily_plan":{"cafe_manha":{"name":"str","time":"07:00","calories":0,"protein":0,"carbs":0,"fat":0,"ingredients":[{"name":"str","quantity":"str","calories":0,"protein":0,"carbs":0,"fat":0}]},"almoco":{"name":"str","time":"12:00","calories":0,"protein":0,"carbs":0,"fat":0,"ingredients":[]},"lanche_tarde":{"name":"str","time":"15:30","calories":0,"protein":0,"carbs":0,"fat":0,"ingredients":[]},"jantar":{"name":"str","time":"19:00","calories":0,"protein":0,"carbs":0,"fat":0,"ingredients":[]},"ceia":{"name":"str","time":"21:30","calories":0,"protein":0,"carbs":0,"fat":0,"ingredients":[]}},"main_protein":"str","main_carb":"str"}`,
           response_json_schema: { type: "object", properties: { daily_plan: { type: "object" }, main_protein: { type: "string" }, main_carb: { type: "string" } } }
         });
         if (res.main_protein) usedProteins.push(res.main_protein);
         if (res.main_carb) usedCarbs.push(res.main_carb);
+        if (res.daily_plan) {
+          Object.values(res.daily_plan).forEach((meal) => {
+            if (meal?.name) usedMeals.push(meal.name);
+            meal?.ingredients?.forEach((ingredient) => {
+              if (ingredient?.name) usedIngredients.push(ingredient.name);
+            });
+          });
+        }
         
         // Calcula totais do dia
         const meals = Object.values(res.daily_plan);

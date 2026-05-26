@@ -12,6 +12,65 @@ const DAY_FULL = { DOM: "Domingo", SEG: "Segunda-feira", TER: "Terça-feira", QU
 
 const PROTEIN_VARIATIONS = ["frango grelhado", "peixe assado", "carne bovina magra", "ovos mexidos", "atum", "salmão", "patinho moído"];
 const CARB_VARIATIONS = ["arroz integral", "batata doce", "macarrão integral", "quinoa", "aveia", "mandioca", "pão integral"];
+const MEAL_TIMING_RULES = `
+REGRAS OBRIGATÓRIAS POR HORÁRIO:
+- cafe_manha 07:00: comida típica de café da manhã, como ovos, aveia, tapioca, cuscuz, pão integral, iogurte, frutas, queijo cottage, leite ou alternativas permitidas. NÃO use almoço/jantar aqui, como arroz com frango, peixe com legumes, carne com batata ou marmita.
+- almoco 12:00: refeição principal de almoço, com proteína magra, carboidrato de base, feijão/leguminosas quando fizer sentido, salada e legumes. Pode usar arroz, batata, mandioca, macarrão, quinoa, frango, peixe, carne magra, ovos ou leguminosas.
+- lanche_tarde 15:30: lanche prático de tarde/pré-treino, como iogurte com fruta, vitamina, sanduíche integral, tapioca pequena, fruta com pasta de amendoim, whey/proteína vegetal, aveia ou castanhas. NÃO use prato de almoço completo.
+- jantar 19:00: jantar realista, mais leve que almoço quando o objetivo permitir, com proteína, legumes/verduras e carboidrato ajustado à meta. Evite café da manhã no jantar.
+- ceia 21:30: refeição leve antes de dormir, focada em proteína e saciedade, como iogurte proteico, cottage, caseína/whey, leite, ovos, tofu, abacate, chia ou castanhas. NÃO use arroz, feijão, macarrão, carne com batata ou prato pesado.
+Cada refeição deve parecer natural para o horário, mas ainda bater as calorias e macros definidos.`;
+const DAY_MEAL_VARIETY = {
+  DOM: {
+    cafe_manha: "omelete com tapioca e mamão",
+    almoco: "frango grelhado, arroz integral, feijão e salada",
+    lanche_tarde: "iogurte com banana, aveia e castanhas",
+    jantar: "peixe assado com legumes e batata doce",
+    ceia: "cottage ou iogurte proteico com chia",
+  },
+  SEG: {
+    cafe_manha: "overnight oats com iogurte, banana e chia",
+    almoco: "patinho moído, mandioca, feijão e legumes",
+    lanche_tarde: "sanduíche integral com atum e fruta",
+    jantar: "frango desfiado com quinoa e salada",
+    ceia: "leite ou proteína vegetal com abacate",
+  },
+  TER: {
+    cafe_manha: "cuscuz com ovos mexidos e fruta",
+    almoco: "peixe grelhado, arroz, lentilha e salada",
+    lanche_tarde: "vitamina de fruta com aveia e proteína",
+    jantar: "carne magra com abobrinha e purê de batata",
+    ceia: "ovos cozidos ou tofu com chia",
+  },
+  QUA: {
+    cafe_manha: "pão integral com ovos e queijo cottage",
+    almoco: "frango, macarrão integral e legumes",
+    lanche_tarde: "tapioca pequena com queijo ou frango",
+    jantar: "omelete com legumes e salada",
+    ceia: "iogurte natural com linhaça",
+  },
+  QUI: {
+    cafe_manha: "panqueca de banana com aveia e ovos",
+    almoco: "salmão ou peixe, batata inglesa e salada",
+    lanche_tarde: "fruta com pasta de amendoim e whey",
+    jantar: "frango com legumes salteados e arroz integral",
+    ceia: "cottage com castanhas",
+  },
+  SEX: {
+    cafe_manha: "tapioca com ovos e vitamina de fruta",
+    almoco: "carne bovina magra, arroz, feijão e salada",
+    lanche_tarde: "iogurte com granola e morangos",
+    jantar: "tilápia ou tofu com legumes e quinoa",
+    ceia: "caseína, iogurte proteico ou leite com chia",
+  },
+  SAB: {
+    cafe_manha: "mingau de aveia com banana e proteína",
+    almoco: "frango ou grão-de-bico, batata doce e salada",
+    lanche_tarde: "wrap integral com proteína e fruta",
+    jantar: "sopa proteica com legumes e frango desfiado",
+    ceia: "abacate com chia ou iogurte proteico",
+  },
+};
 
 export default function Dieta() {
   const [user, setUser] = useState(null);
@@ -319,8 +378,12 @@ ${restrictions}`;
     };
 
     const avoidStr = usedFoods.length > 0
-      ? `ALIMENTOS JÁ USADOS NESTA SEMANA — USE INGREDIENTES DIFERENTES: ${usedFoods.slice(0, 25).join(", ")}`
+      ? `ALIMENTOS JÁ USADOS EM OUTROS DIAS DA SEMANA — EVITE REPETIR, EXCETO itens básicos em pequena quantidade: ${usedFoods.slice(0, 60).join(", ")}`
       : "Escolha os alimentos que melhor se encaixam no objetivo e biotipo.";
+    const dayVariety = DAY_MEAL_VARIETY[day] || DAY_MEAL_VARIETY.SEG;
+    const varietyStr = Object.entries(dayVariety)
+      .map(([meal, suggestion]) => `${meal}: ${suggestion}`)
+      .join(" | ");
 
     return {
       mealCals,
@@ -330,7 +393,9 @@ META: ${targetCals}kcal | P:${proteinG}g | C:${carbG}g | G:${fatG}g
 Distribuição: café=${mealCals.cafe_manha}kcal | almoço=${mealCals.almoco}kcal | lanche=${mealCals.lanche_tarde}kcal | jantar=${mealCals.jantar}kcal | ceia=${mealCals.ceia}kcal
 ${p.food_restrictions?.length ? `PROIBIDO: ${p.food_restrictions.join(", ")}` : ""}
 ${avoidStr}
-Regras: quantidades em gramas exatas, alimentos brasileiros reais, sem repetir ingredientes no mesmo dia.
+SUGESTÕES DE VARIEDADE PARA ESTE DIA (use como inspiração, ajustando macros e restrições): ${varietyStr}
+${MEAL_TIMING_RULES}
+Regras: quantidades em gramas exatas, alimentos brasileiros reais, sem repetir ingredientes no mesmo dia, sem repetir o mesmo cardápio dos outros dias e sem colocar comida de almoço no café da manhã/ceia.
 JSON:{"daily_plan":{"cafe_manha":{"name":"str","time":"07:00","calories":${mealCals.cafe_manha},"protein":${mealMacros.cafe_manha.protein},"carbs":${mealMacros.cafe_manha.carbs},"fat":${mealMacros.cafe_manha.fat},"ingredients":[{"name":"str","quantity":"Xg","calories":0,"protein":0,"carbs":0,"fat":0}]},"almoco":{"name":"str","time":"12:00","calories":${mealCals.almoco},"protein":${mealMacros.almoco.protein},"carbs":${mealMacros.almoco.carbs},"fat":${mealMacros.almoco.fat},"ingredients":[{"name":"str","quantity":"Xg","calories":0,"protein":0,"carbs":0,"fat":0}]},"lanche_tarde":{"name":"str","time":"15:30","calories":${mealCals.lanche_tarde},"protein":${mealMacros.lanche_tarde.protein},"carbs":${mealMacros.lanche_tarde.carbs},"fat":${mealMacros.lanche_tarde.fat},"ingredients":[{"name":"str","quantity":"Xg","calories":0,"protein":0,"carbs":0,"fat":0}]},"jantar":{"name":"str","time":"19:00","calories":${mealCals.jantar},"protein":${mealMacros.jantar.protein},"carbs":${mealMacros.jantar.carbs},"fat":${mealMacros.jantar.fat},"ingredients":[{"name":"str","quantity":"Xg","calories":0,"protein":0,"carbs":0,"fat":0}]},"ceia":{"name":"str","time":"21:30","calories":${mealCals.ceia},"protein":${mealMacros.ceia.protein},"carbs":${mealMacros.ceia.carbs},"fat":${mealMacros.ceia.fat},"ingredients":[{"name":"str","quantity":"Xg","calories":0,"protein":0,"carbs":0,"fat":0}]}},"total_calories":${targetCals},"protein_grams":${proteinG},"carbs_grams":${carbG},"fat_grams":${fatG},"main_protein":"str","main_carb":"str"}`,
       schema: {
         type: "object",
@@ -382,6 +447,12 @@ JSON:{"daily_plan":{"cafe_manha":{"name":"str","time":"07:00","calories":${mealC
       return { day, isTraining, targetCals, proteinG, carbG, fatG, dayCtx };
     });
 
+    const weeklyAvoids = dayConfigs.reduce((acc, config) => {
+      const suggestions = Object.values(DAY_MEAL_VARIETY[config.day] || {});
+      acc[config.day] = suggestions;
+      return acc;
+    }, {});
+
     // Gera os 7 dias em 2 batches para reduzir timeout
     setGenStep("Gerando dias 1-4...");
     setGenProgress(10);
@@ -391,7 +462,10 @@ JSON:{"daily_plan":{"cafe_manha":{"name":"str","time":"07:00","calories":${mealC
 
     const results1 = await Promise.all(
       batch1.map(({ day, isTraining, targetCals, proteinG, carbG, fatG, dayCtx }) => {
-        const { prompt, schema } = buildDayPrompt(day, isTraining, targetCals, proteinG, carbG, fatG, dayCtx, []);
+        const usedFoods = Object.entries(weeklyAvoids)
+          .filter(([otherDay]) => otherDay !== day)
+          .flatMap(([, foods]) => foods);
+        const { prompt, schema } = buildDayPrompt(day, isTraining, targetCals, proteinG, carbG, fatG, dayCtx, usedFoods);
         return appClient.integrations.Core.InvokeLLM({ model: "gpt_5_mini", prompt, response_json_schema: schema })
           .then(res => ({ day, res }));
       })
@@ -402,7 +476,10 @@ JSON:{"daily_plan":{"cafe_manha":{"name":"str","time":"07:00","calories":${mealC
 
     const results2 = await Promise.all(
       batch2.map(({ day, isTraining, targetCals, proteinG, carbG, fatG, dayCtx }) => {
-        const { prompt, schema } = buildDayPrompt(day, isTraining, targetCals, proteinG, carbG, fatG, dayCtx, []);
+        const usedFoods = Object.entries(weeklyAvoids)
+          .filter(([otherDay]) => otherDay !== day)
+          .flatMap(([, foods]) => foods);
+        const { prompt, schema } = buildDayPrompt(day, isTraining, targetCals, proteinG, carbG, fatG, dayCtx, usedFoods);
         return appClient.integrations.Core.InvokeLLM({ model: "gpt_5_mini", prompt, response_json_schema: schema })
           .then(res => ({ day, res }));
       })
@@ -476,7 +553,7 @@ JSON:{"daily_plan":{"cafe_manha":{"name":"str","time":"07:00","calories":${mealC
     const restrictions = profile.food_restrictions?.length > 0 ? `PROIBIDO: ${profile.food_restrictions.join(", ")}.` : "";
     const isTraining = profile?.training_days?.includes(selectedDay);
     const res = await appClient.integrations.Core.InvokeLLM({
-      prompt: `Substitua a refeição "${mealKey}" por alternativa equivalente. Perfil: ${buildContext(profile, isTraining)}. ${restrictions} NÃO use os mesmos alimentos já presentes nas outras refeições do dia: ${currentIngredients}. JSON: {"meal":{"name":"str","time":"str","calories":0,"protein":0,"carbs":0,"fat":0,"ingredients":[{"name":"str","quantity":"str","calories":0,"protein":0,"carbs":0,"fat":0}]}}`,
+      prompt: `Substitua a refeição "${mealKey}" por alternativa equivalente. Perfil: ${buildContext(profile, isTraining)}. ${restrictions} NÃO use os mesmos alimentos já presentes nas outras refeições do dia: ${currentIngredients}. ${MEAL_TIMING_RULES} A nova refeição deve ser adequada especificamente ao horário de "${mealKey}". JSON: {"meal":{"name":"str","time":"str","calories":0,"protein":0,"carbs":0,"fat":0,"ingredients":[{"name":"str","quantity":"str","calories":0,"protein":0,"carbs":0,"fat":0}]}}`,
       response_json_schema: { type: "object", properties: { meal: { type: "object" } } }
     });
     const updatedWeekPlan = JSON.parse(JSON.stringify(plan.week_plan));
@@ -497,7 +574,7 @@ JSON:{"daily_plan":{"cafe_manha":{"name":"str","time":"07:00","calories":${mealC
     const restrictions = profile.food_restrictions?.length > 0 ? `PROIBIDO: ${profile.food_restrictions.join(", ")}.` : "";
     const isTraining2 = profile?.training_days?.includes(selectedDay);
     const res = await appClient.integrations.Core.InvokeLLM({
-      prompt: `Substitua "${ingredient.name}" (${ingredient.quantity}, ${ingredient.calories}kcal) por equivalente DIFERENTE. Perfil: ${buildContext(profile, isTraining2)}. ${restrictions} NÃO use nenhum destes ingredientes já no plano: ${allIngredients}. JSON: {"ingredient":{"name":"str","quantity":"str","calories":0,"protein":0,"carbs":0,"fat":0}}`,
+      prompt: `Substitua "${ingredient.name}" (${ingredient.quantity}, ${ingredient.calories}kcal) por equivalente DIFERENTE e adequado para a refeição "${mealKey}". Perfil: ${buildContext(profile, isTraining2)}. ${restrictions} NÃO use nenhum destes ingredientes já no plano: ${allIngredients}. ${MEAL_TIMING_RULES} JSON: {"ingredient":{"name":"str","quantity":"str","calories":0,"protein":0,"carbs":0,"fat":0}}`,
       response_json_schema: { type: "object", properties: { ingredient: { type: "object" } } }
     });
     const updatedWeekPlan = JSON.parse(JSON.stringify(plan.week_plan));

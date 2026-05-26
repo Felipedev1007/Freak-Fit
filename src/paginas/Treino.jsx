@@ -135,7 +135,11 @@ export default function Treino() {
     }[p.biotype] || "";
 
     const sexContext = p.sex === "feminino"
-      ? "ALUNA: Priorize membros inferiores (glúteos, posterior de coxa, adutores, abdutor). Inclua: hip thrust, agachamento variado, terra romeno, afundo, abdutora/adutora. Reduza volume de peito/tríceps."
+      ? `ALUNA / PERFIL FEMININO: construa a semana com predominância clara de membros inferiores.
+Prioridade: glúteos, posterior de coxa, quadríceps, adutores, abdutores, panturrilhas e core.
+Distribuição esperada: pelo menos 60-70% dos dias de treino com foco inferior/glúteos quando a frequência permitir.
+Inclua com frequência: hip thrust, elevação de quadril, agachamentos, terra romeno, afundos, cadeira abdutora/adutora, glúteo no cabo ou variações equivalentes.
+Membros superiores entram como manutenção estética e postural, com menos volume para peito/tríceps e bom trabalho de costas/ombros.`
       : "";
 
     // Local de treino — calistenia completa para casa com lista de exercícios permitidos
@@ -210,7 +214,15 @@ ${injuries}`;
 
     // Focos musculares por sexo e local
     const focusList = p.sex === "feminino"
-      ? ["Glúteos e Posterior de Coxa", "Costas e Bíceps", "Quadríceps e Adutores", "Ombros e Core", "Glúteos e Abdutor/Adutor", "Corpo Todo Foco Inferior", "Posterior Completo"]
+      ? [
+          "Glúteos e Posterior de Coxa",
+          "Quadríceps, Adutores e Panturrilhas",
+          "Glúteos e Abdutor/Adutor",
+          "Costas, Ombros e Core",
+          "Pernas Completas com Ênfase em Glúteos",
+          "Posterior Completo e Glúteos",
+          "Corpo Todo com Foco Inferior",
+        ]
       : (isHome || isOutdoor)
         ? ["Empurrar (Peito/Ombro/Tríceps)", "Puxar (Costas/Bíceps)", "Pernas e Glúteos", "Core e Condicionamento", "Corpo Todo Funcional", "Superior Completo", "Inferior e Mobilidade"]
         : ["Peito e Tríceps", "Costas e Bíceps", "Pernas e Glúteos", "Ombros e Core", "Braços e Abdômen", "Corpo Todo", "Costas e Core"];
@@ -250,6 +262,7 @@ ESPECIFICAÇÕES OBRIGATÓRIAS:
 - Exercícios: EXATAMENTE ${levelSpec.maxEx}
 - Séries: ${levelSpec.sets} | Reps: ${levelSpec.reps} | Descanso: ${levelSpec.rest}s
 - Nível: ${level === "iniciante" ? "INICIANTE — movimentos fundamentais, zero falha muscular, técnica antes de tudo" : level === "intermediario" ? "INTERMEDIÁRIO — compostos + isoladores, próximo à falha nas últimas 2 séries" : "EXPERIENTE — alta intensidade, falha muscular controlada, técnicas avançadas"}
+${p.sex === "feminino" ? "- PERFIL FEMININO: se o foco do dia for inferior, priorize glúteos/pernas com 1-2 exercícios compostos e isoladores de glúteos, adutores ou abdutores. Evite transformar dias femininos em treino dominante de peito/tríceps." : ""}
 ${isHome
   ? `- REGRA ABSOLUTA TREINO EM CASA: CALISTENIA PURA. Se você sugerir leg press, máquina, cabo, polia, barra olímpica ou qualquer equipamento de academia = resposta INVÁLIDA. Use APENAS: flexão de braço e variações, agachamento livre e variações, afundo, prancha, dip entre cadeiras, barra de porta, elástico, halteres leves (máx 15kg).`
   : isOutdoor

@@ -4,7 +4,7 @@ import { createPageUrl } from "@/utils";
 import { appClient } from "@/api/appClient";
 import { useAuth } from "@/lib/AuthContext";
 import {
-  LayoutDashboard, Dumbbell, Utensils, TrendingUp, Camera, Settings, LogOut, Menu, X, Zap
+  LayoutDashboard, Dumbbell, Utensils, TrendingUp, Camera, Heart, Settings, LogOut, Menu, X, Zap
 } from "lucide-react";
 
 const navItems = [
@@ -13,6 +13,7 @@ const navItems = [
   { label: "Dieta", icon: Utensils, page: "Dieta" },
   { label: "Progresso", icon: TrendingUp, page: "Progresso" },
   { label: "Refeição", icon: Camera, page: "AnaliseRefeicao" },
+  { label: "Memorial", icon: Heart, page: "Memorial" },
 ];
 
 export default function Layout({ children, currentPageName }) {
@@ -198,7 +199,7 @@ export default function Layout({ children, currentPageName }) {
               className="flex-1 flex flex-col items-center gap-1 py-3 transition-all"
               style={{ color: active ? primaryColor : "var(--text-muted)" }}>
               <item.icon size={20} />
-              <span className="text-[10px] font-medium">{item.label}</span>
+              <span className="text-[9px] font-medium">{item.label}</span>
             </Link>
           );
         })}

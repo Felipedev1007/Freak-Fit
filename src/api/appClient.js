@@ -434,6 +434,10 @@ const EXERCISES = {
       ["Cadeira flexora", "Posterior de coxa"],
       ["Terra romeno", "Posterior/Gluteos"],
       ["Hip thrust", "Gluteos"],
+      ["Cadeira abdutora", "Gluteo medio"],
+      ["Cadeira adutora", "Adutores"],
+      ["Gluteo no cabo", "Gluteos"],
+      ["Passada no smith", "Gluteos/Pernas"],
       ["Panturrilha em pe", "Panturrilhas"],
     ],
     core: [
@@ -473,6 +477,9 @@ const EXERCISES = {
       ["Afundo estatico", "Pernas"],
       ["Agachamento bulgaro na cadeira", "Gluteos"],
       ["Elevacao de quadril", "Gluteos"],
+      ["Elevacao de quadril unilateral", "Gluteos"],
+      ["Agachamento sumo com pausa", "Gluteos/Adutores"],
+      ["Abducao de quadril lateral", "Gluteo medio"],
       ["Panturrilha unilateral", "Panturrilhas"],
       ["Agachamento sumo", "Pernas/Gluteos"],
     ],
@@ -509,6 +516,9 @@ const EXERCISES = {
       ["Afundo caminhando", "Pernas"],
       ["Agachamento livre", "Quadriceps"],
       ["Step-up no banco", "Gluteos"],
+      ["Agachamento bulgaro no banco", "Gluteos"],
+      ["Elevacao de quadril no banco", "Gluteos"],
+      ["Afundo reverso", "Gluteos/Pernas"],
       ["Sprint curto", "Condicionamento"],
       ["Panturrilha no degrau", "Panturrilhas"],
     ],
@@ -538,7 +548,7 @@ function focusGroups(focusText) {
   const focus = String(focusText || "").toLowerCase();
   if (includesAny(focus, ["peito", "triceps", "empurrar"])) return ["push"];
   if (includesAny(focus, ["costas", "biceps", "puxar"])) return ["pull"];
-  if (includesAny(focus, ["pernas", "glute", "quadr", "posterior", "inferior"])) return ["legs"];
+  if (includesAny(focus, ["pernas", "glute", "quadr", "posterior", "inferior", "adutor", "abdutor", "panturrilha"])) return ["legs"];
   if (includesAny(focus, ["ombro", "core", "abd"])) return ["push", "core"];
   if (includesAny(focus, ["bracos"])) return ["push", "pull", "core"];
   return ["full"];
@@ -650,40 +660,104 @@ function makeMeal(key, calories, protein, carbs, fat, flags, seed = 0) {
   const proteinFood = chooseProtein(flags, seed);
   const carbFood = chooseCarb(flags, seed);
   const fatFood = flags.nuts ? "azeite de oliva" : seed % 2 ? "abacate" : "castanhas";
-
-  const names = {
-    cafe_manha: flags.eggs || flags.vegan
-      ? `Creme de ${carbFood} com banana`
-      : `Ovos com ${carbFood} e fruta`,
-    almoco: `${proteinFood} com ${carbFood}`,
-    lanche_tarde: flags.lactose || flags.vegan
-      ? `Vitamina de fruta com ${carbFood}`
-      : `Iogurte com fruta e ${carbFood}`,
-    jantar: `${proteinFood} com legumes e ${carbFood}`,
-    ceia: flags.lactose || flags.vegan
-      ? "Abacate com chia"
-      : "Iogurte proteico com chia",
-  };
-
-  const ingredients = key === "ceia"
+  const breakfastProtein = flags.eggs || flags.vegan ? (flags.vegan ? "pasta de amendoim" : "frango desfiado") : "ovos mexidos";
+  const breakfastCarb = flags.gluten ? (seed % 2 ? "tapioca" : "cuscuz de milho") : (seed % 2 ? "aveia" : "pao integral");
+  const snackProtein = flags.lactose || flags.vegan ? (flags.vegan ? "proteina vegetal" : "atum") : "iogurte natural";
+  const supperProtein = flags.lactose || flags.vegan ? (flags.vegan ? "tofu cremoso" : "ovos cozidos") : "iogurte proteico";
+  const breakfastNames = flags.eggs || flags.vegan
     ? [
-        splitIngredient(names[key], "1 porcao", calories * 0.75, protein * 0.75, carbs * 0.75, fat * 0.75),
-        splitIngredient("chia", "10g", calories * 0.25, protein * 0.25, carbs * 0.25, fat * 0.25),
+        `Café da manhã com ${breakfastCarb}, banana e ${breakfastProtein}`,
+        `Vitamina de fruta com ${breakfastCarb} e ${breakfastProtein}`,
+        `Creme de ${breakfastCarb} com banana e chia`,
       ]
     : [
-        splitIngredient(proteinFood, "120g", calories * 0.42, protein * 0.65, carbs * 0.05, fat * 0.35),
-        splitIngredient(carbFood, "150g", calories * 0.42, protein * 0.2, carbs * 0.85, fat * 0.1),
-        splitIngredient(key === "lanche_tarde" ? "banana" : "legumes variados", "100g", calories * 0.16, protein * 0.15, carbs * 0.1, fat * 0.55),
+        `Ovos mexidos com ${breakfastCarb} e fruta`,
+        `Panqueca de banana com ${breakfastCarb}`,
+        `Omelete com ${breakfastCarb} e mamão`,
+        `Iogurte com ${breakfastCarb}, fruta e chia`,
       ];
+  const lunchNames = [
+    `${proteinFood} com ${carbFood}, feijão e salada`,
+    `${proteinFood} com ${carbFood} e legumes cozidos`,
+    `${proteinFood} com feijão, salada e ${carbFood}`,
+    `Bowl de ${proteinFood}, ${carbFood} e vegetais`,
+  ];
+  const snackNames = flags.lactose || flags.vegan
+    ? [
+        `Lanche da tarde com fruta, ${snackProtein} e ${breakfastCarb}`,
+        `Vitamina de fruta com ${snackProtein}`,
+        `${breakfastCarb} pequeno com ${snackProtein}`,
+      ]
+    : [
+        `Iogurte com fruta, aveia e ${fatFood}`,
+        `Sanduíche integral com ${snackProtein} e fruta`,
+        `Tapioca pequena com ${snackProtein}`,
+        `Vitamina proteica com banana e aveia`,
+      ];
+  const dinnerNames = [
+    `${proteinFood} com legumes, verduras e ${carbFood}`,
+    `${proteinFood} com salada e legumes salteados`,
+    `Sopa proteica com ${proteinFood} e legumes`,
+    `${proteinFood} com purê leve e verduras`,
+  ];
+  const supperNames = flags.lactose || flags.vegan
+    ? [`${supperProtein} com chia`, "Abacate com chia", `${supperProtein} com linhaça`]
+    : ["Iogurte proteico com chia", "Cottage com castanhas", "Leite proteico com linhaça"];
+
+  const templates = {
+    cafe_manha: {
+      name: breakfastNames[seed % breakfastNames.length],
+      ingredients: [
+        splitIngredient(breakfastProtein, "100g", calories * 0.34, protein * 0.58, carbs * 0.05, fat * 0.45),
+        splitIngredient(breakfastCarb, "120g", calories * 0.44, protein * 0.22, carbs * 0.78, fat * 0.18),
+        splitIngredient("banana", "100g", calories * 0.22, protein * 0.2, carbs * 0.17, fat * 0.37),
+      ],
+    },
+    almoco: {
+      name: lunchNames[seed % lunchNames.length],
+      ingredients: [
+        splitIngredient(proteinFood, "130g", calories * 0.38, protein * 0.62, carbs * 0.03, fat * 0.34),
+        splitIngredient(carbFood, "150g", calories * 0.34, protein * 0.18, carbs * 0.72, fat * 0.08),
+        splitIngredient("feijão", "90g", calories * 0.14, protein * 0.12, carbs * 0.18, fat * 0.04),
+        splitIngredient("salada e legumes", "120g", calories * 0.14, protein * 0.08, carbs * 0.07, fat * 0.54),
+      ],
+    },
+    lanche_tarde: {
+      name: snackNames[seed % snackNames.length],
+      ingredients: [
+        splitIngredient(snackProtein, "120g", calories * 0.38, protein * 0.62, carbs * 0.08, fat * 0.22),
+        splitIngredient("banana ou maca", "100g", calories * 0.28, protein * 0.08, carbs * 0.42, fat * 0.08),
+        splitIngredient(flags.gluten ? "tapioca" : "aveia", "45g", calories * 0.22, protein * 0.18, carbs * 0.42, fat * 0.16),
+        splitIngredient(fatFood, "15g", calories * 0.12, protein * 0.12, carbs * 0.08, fat * 0.54),
+      ],
+    },
+    jantar: {
+      name: dinnerNames[seed % dinnerNames.length],
+      ingredients: [
+        splitIngredient(proteinFood, "130g", calories * 0.46, protein * 0.68, carbs * 0.04, fat * 0.38),
+        splitIngredient("legumes cozidos", "160g", calories * 0.2, protein * 0.12, carbs * 0.16, fat * 0.22),
+        splitIngredient(carbFood, "100g", calories * 0.24, protein * 0.12, carbs * 0.72, fat * 0.06),
+        splitIngredient("azeite de oliva", "8g", calories * 0.1, protein * 0.08, carbs * 0.08, fat * 0.34),
+      ],
+    },
+    ceia: {
+      name: supperNames[seed % supperNames.length],
+      ingredients: [
+        splitIngredient(supperProtein, "120g", calories * 0.72, protein * 0.78, carbs * 0.45, fat * 0.52),
+        splitIngredient("chia", "10g", calories * 0.28, protein * 0.22, carbs * 0.55, fat * 0.48),
+      ],
+    },
+  };
+  const template = templates[key] || templates.almoco;
 
   return {
-    name: names[key],
+    name: template.name,
     time: MEAL_TIMES[key],
     calories: Math.round(calories),
     protein: Math.round(protein),
     carbs: Math.round(carbs),
     fat: Math.round(fat),
-    ingredients,
+    ingredients: template.ingredients,
   };
 }
 
@@ -937,7 +1011,7 @@ const client = {
         created_at: new Date().toISOString(),
       };
       writeAccounts([account, ...accounts]);
-      return persistSession(account);
+      return sanitizeUser(account);
     },
     async login({ email, password }) {
       const cleanEmail = validateAuthFields({ email, password }, "login");

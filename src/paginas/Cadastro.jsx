@@ -3,7 +3,6 @@ import { Link, useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import { ArrowRight, Chrome, Github, Lock, Mail, User } from "lucide-react";
 import { appClient } from "@/api/appClient";
-import { useAuth } from "@/lib/AuthContext";
 
 function Field({ icon: Icon, ...props }) {
   return (
@@ -19,14 +18,15 @@ function Field({ icon: Icon, ...props }) {
 
 export default function Cadastro() {
   const navigate = useNavigate();
-  const { checkUserAuth } = useAuth();
   const [form, setForm] = useState({ name: "", email: "", password: "" });
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
-  async function finish() {
-    await checkUserAuth();
-    navigate("/BoasVindas", { replace: true });
+  function finishRegistration() {
+    navigate("/Login", {
+      replace: true,
+      state: { accountCreated: true, email: form.email },
+    });
   }
 
   async function handleSubmit(e) {
@@ -35,7 +35,7 @@ export default function Cadastro() {
     setLoading(true);
     try {
       await appClient.auth.register(form);
-      await finish();
+      finishRegistration();
     } catch (err) {
       setError(err.message || "Não foi possível criar sua conta.");
     } finally {
@@ -48,7 +48,7 @@ export default function Cadastro() {
     setLoading(true);
     try {
       await appClient.auth.loginWithProvider(provider);
-      await finish();
+      navigate("/Painel", { replace: true });
     } catch (err) {
       setError(err.message || "Falha no cadastro social.");
     } finally {
