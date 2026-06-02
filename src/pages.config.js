@@ -59,6 +59,7 @@ import Progresso from './paginas/Progresso';
 import Configuracoes from './paginas/Configuracoes';
 import Treino from './paginas/Treino';
 import Memorial from './paginas/Memorial';
+import Admin from './paginas/Admin';
 import __Layout from './Layout.jsx';
 
 
@@ -75,6 +76,7 @@ export const PAGES = {
     "Configuracoes": Configuracoes,
     "Treino": Treino,
     "Memorial": Memorial,
+    "Admin": Admin,
 }
 
 export const pagesConfig = {

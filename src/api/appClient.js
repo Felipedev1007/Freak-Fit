@@ -5,6 +5,9 @@ import { hasSupabaseConfig, supabase } from './supabaseClient';
 const STORAGE_PREFIX = "freakfit";
 const USER_KEY = `${STORAGE_PREFIX}:session-user`;
 const ACCOUNTS_KEY = `${STORAGE_PREFIX}:auth-accounts`;
+const ADMIN_EMAIL = normalizeEmail(import.meta.env.VITE_ADMIN_EMAIL || "admin@freakfit.local");
+const ADMIN_PASSWORD = import.meta.env.VITE_ADMIN_PASSWORD || "FreakFit@2026";
+const ADMIN_ACCOUNT_ID = "freakfit-admin";
 const SUPABASE_ENTITY_TABLE = "freakfit_entities";
 const SUPABASE_UPLOAD_BUCKET = "freakfit-uploads";
 const ENTITY_NAMES = [
@@ -65,8 +68,9 @@ function getCurrentUser() {
   if (existing?.email) {
     const accounts = readAccounts();
     const accountExists = accounts.some((account) => account.email === normalizeEmail(existing.email));
+    const isAdminSession = existing.role === "admin" && normalizeEmail(existing.email) === ADMIN_EMAIL;
     const isLegacyAutoUser = existing.id === "local-user" || existing.email === "usuario@freakfit.local";
-    if (accountExists && !isLegacyAutoUser) return existing;
+    if ((accountExists || isAdminSession) && !isLegacyAutoUser) return existing;
 
     if (typeof window !== "undefined") {
       window.localStorage.removeItem(USER_KEY);
@@ -92,6 +96,32 @@ function sanitizeUser(account) {
 
 function normalizeEmail(email) {
   return String(email || "").trim().toLowerCase();
+}
+
+function isAdminAccount(account) {
+  return Boolean(account?.role === "admin" && normalizeEmail(account.email) === ADMIN_EMAIL);
+}
+
+function requireAdmin() {
+  const user = getCurrentUser();
+  if (!isAdminAccount(user)) {
+    const error = new Error("Acesso permitido apenas para administradores.");
+    error.type = "admin_required";
+    throw error;
+  }
+  return user;
+}
+
+function createAdminAccount() {
+  return {
+    id: ADMIN_ACCOUNT_ID,
+    email: ADMIN_EMAIL,
+    full_name: "Administrador FreakFit",
+    avatar_url: "",
+    auth_provider: "admin",
+    role: "admin",
+    created_at: new Date().toISOString(),
+  };
 }
 
 function readAccounts() {
@@ -217,7 +247,8 @@ async function readRemoteCollection(entityName, criteria = {}) {
     .select("id,data,created_date,updated_date")
     .eq("entity_name", entityName);
 
-  const userEmail = criteria?.user_email || getCurrentUser().email;
+  const currentUser = getCurrentUser();
+  const userEmail = criteria?.user_email || (isAdminAccount(currentUser) ? null : currentUser.email);
   if (userEmail) query = query.eq("user_email", userEmail);
 
   const { data, error } = await query;
@@ -302,6 +333,57 @@ async function deleteRemoteItem(entityName, id) {
 
   if (error) throw error;
   return true;
+}
+
+async function deleteRemoteUserData(userEmail) {
+  if (!useSupabaseData()) return true;
+  const { error } = await supabase
+    .from(SUPABASE_ENTITY_TABLE)
+    .delete()
+    .eq("user_email", userEmail);
+
+  if (error) throw error;
+  return true;
+}
+
+async function reassignRemoteUserData(oldEmail, newEmail) {
+  if (!useSupabaseData() || oldEmail === newEmail) return true;
+
+  const { data, error } = await supabase
+    .from(SUPABASE_ENTITY_TABLE)
+    .select("id,data,entity_name,created_date,updated_date")
+    .eq("user_email", oldEmail);
+
+  if (error) throw error;
+
+  for (const row of data || []) {
+    const nextData = { ...(row.data || {}), user_email: newEmail };
+    const { error: updateError } = await supabase
+      .from(SUPABASE_ENTITY_TABLE)
+      .update({ user_email: newEmail, data: nextData })
+      .eq("id", row.id);
+
+    if (updateError) throw updateError;
+  }
+
+  return true;
+}
+
+function deleteLocalUserData(userEmail) {
+  for (const entityName of ENTITY_NAMES) {
+    const remaining = readCollection(entityName).filter((item) => item.user_email !== userEmail);
+    writeCollection(entityName, remaining);
+  }
+}
+
+function reassignLocalUserData(oldEmail, newEmail) {
+  if (oldEmail === newEmail) return;
+  for (const entityName of ENTITY_NAMES) {
+    const updated = readCollection(entityName).map((item) =>
+      item.user_email === oldEmail ? { ...item, user_email: newEmail } : item
+    );
+    writeCollection(entityName, updated);
+  }
 }
 
 function createEntityApi(entityName) {
@@ -995,6 +1077,10 @@ const client = {
     },
     async register({ name, email, password }) {
       const cleanEmail = validateAuthFields({ name, email, password }, "register");
+      if (cleanEmail === ADMIN_EMAIL) {
+        throw new Error("Este e-mail é reservado para o administrador.");
+      }
+
       const accounts = readAccounts();
       if (accounts.some((account) => account.email === cleanEmail)) {
         throw new Error("Já existe uma conta cadastrada com este e-mail.");
@@ -1015,6 +1101,17 @@ const client = {
     },
     async login({ email, password }) {
       const cleanEmail = validateAuthFields({ email, password }, "login");
+      if (cleanEmail === ADMIN_EMAIL && String(password) === ADMIN_PASSWORD) {
+        const accounts = readAccounts();
+        const previousAdmin = accounts.find(isAdminAccount);
+        const adminAccount = {
+          ...createAdminAccount(),
+          created_at: previousAdmin?.created_at || new Date().toISOString(),
+        };
+        writeAccounts([adminAccount, ...accounts.filter((account) => account.email !== ADMIN_EMAIL)]);
+        return persistSession(adminAccount);
+      }
+
       const accounts = readAccounts();
       const account = accounts.find((item) => item.email === cleanEmail);
       if (!account || account.auth_provider !== "email") {
@@ -1090,6 +1187,83 @@ const client = {
         const next = encodeURIComponent(returnUrl || "/Painel");
         window.location.href = `/Login?next=${next}`;
       }
+    },
+  },
+  admin: {
+    async listUsers() {
+      requireAdmin();
+      const accounts = readAccounts();
+      const adminAccount = accounts.find(isAdminAccount) || createAdminAccount();
+      const users = [
+        adminAccount,
+        ...accounts.filter((account) => !isAdminAccount(account)),
+      ];
+
+      return users
+        .map(sanitizeUser)
+        .sort((a, b) => {
+          if (a.role === b.role) return String(a.email).localeCompare(String(b.email));
+          return a.role === "admin" ? -1 : 1;
+        });
+    },
+    async updateUser(id, patch = {}) {
+      requireAdmin();
+      if (id === ADMIN_ACCOUNT_ID) {
+        throw new Error("O administrador principal não pode ser editado por aqui.");
+      }
+
+      const accounts = readAccounts();
+      const account = accounts.find((item) => item.id === id);
+      if (!account) throw new Error("Usuário não encontrado.");
+
+      const nextEmail = patch.email != null
+        ? validateAuthFields({ email: patch.email }, "login")
+        : account.email;
+
+      if (nextEmail === ADMIN_EMAIL) {
+        throw new Error("Este e-mail é reservado para o administrador.");
+      }
+      if (accounts.some((item) => item.id !== id && item.email === nextEmail)) {
+        throw new Error("Já existe outro usuário com este e-mail.");
+      }
+
+      const nextAccount = {
+        ...account,
+        email: nextEmail,
+        full_name: String(patch.full_name ?? account.full_name ?? "").trim() || account.full_name,
+        role: "user",
+        updated_at: new Date().toISOString(),
+      };
+
+      if (patch.password) {
+        validateAuthFields({ email: nextEmail, password: patch.password }, "login");
+        Object.assign(nextAccount, await hashPassword(patch.password));
+        nextAccount.auth_provider = "email";
+      }
+
+      writeAccounts(accounts.map((item) => item.id === id ? nextAccount : item));
+
+      if (account.email !== nextEmail) {
+        reassignLocalUserData(account.email, nextEmail);
+        await reassignRemoteUserData(account.email, nextEmail);
+      }
+
+      return sanitizeUser(nextAccount);
+    },
+    async deleteUser(id) {
+      requireAdmin();
+      if (id === ADMIN_ACCOUNT_ID) {
+        throw new Error("O administrador principal não pode ser excluído.");
+      }
+
+      const accounts = readAccounts();
+      const account = accounts.find((item) => item.id === id);
+      if (!account) throw new Error("Usuário não encontrado.");
+
+      await deleteRemoteUserData(account.email);
+      deleteLocalUserData(account.email);
+      writeAccounts(accounts.filter((item) => item.id !== id));
+      return true;
     },
   },
   entities,

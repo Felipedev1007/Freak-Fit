@@ -42,6 +42,10 @@ export default function Painel() {
     setLoading(true);
     const u = await appClient.auth.me().catch(() => null);
     if (!u) { appClient.auth.redirectToLogin(createPageUrl("Painel")); return; }
+    if (u.role === "admin") {
+      window.location.href = createPageUrl("Admin");
+      return;
+    }
     setUser(u);
     const profiles = await appClient.entities.UserProfile.filter({ user_email: u.email });
     if (!profiles.length || !profiles[0].onboarding_completed) {

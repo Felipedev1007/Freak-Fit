@@ -80,6 +80,10 @@ export default function Login() {
 
   async function finish(user) {
     await checkUserAuth();
+    if (user?.role === "admin") {
+      navigate("/Admin", { replace: true });
+      return;
+    }
     navigate(user ? next : "/Painel", { replace: true });
   }
 
@@ -130,7 +134,7 @@ export default function Login() {
           <div className="mt-4 grid grid-cols-2 gap-2">
             <button
               type="button"
-              onClick={() => navigate("/Painel")}
+              onClick={() => navigate(user?.role === "admin" ? "/Admin" : "/Painel")}
               className="rounded-xl bg-[#00f5b8] px-3 py-2 text-xs font-bold text-black"
             >
               Continuar

@@ -4,7 +4,7 @@ import { createPageUrl } from "@/utils";
 import { appClient } from "@/api/appClient";
 import { useAuth } from "@/lib/AuthContext";
 import {
-  LayoutDashboard, Dumbbell, Utensils, TrendingUp, Camera, Heart, Settings, LogOut, Menu, X, Zap
+  LayoutDashboard, Dumbbell, Utensils, TrendingUp, Camera, Heart, Settings, LogOut, Menu, X, Zap, Shield
 } from "lucide-react";
 
 const navItems = [
@@ -116,6 +116,17 @@ export default function Layout({ children, currentPageName }) {
             <Settings size={18} />
             <span className="text-sm font-medium">Configurações</span>
           </Link>
+          {user?.role === "admin" && (
+            <Link to={createPageUrl("Admin")}
+              className="flex items-center gap-3 px-3 py-2.5 rounded-xl mb-1 transition-all"
+              style={{
+                background: currentPageName === "Admin" ? `${primaryColor}15` : "transparent",
+                color: currentPageName === "Admin" ? primaryColor : "var(--text-secondary)"
+              }}>
+              <Shield size={18} />
+              <span className="text-sm font-medium">Admin</span>
+            </Link>
+          )}
           {user && (
             <div className="flex items-center gap-3 px-3 py-2.5">
               <div className="w-7 h-7 rounded-full overflow-hidden flex items-center justify-center text-xs font-bold"
@@ -178,6 +189,17 @@ export default function Layout({ children, currentPageName }) {
               <Settings size={18} />
               <span className="text-sm font-medium">Configurações</span>
             </Link>
+            {user?.role === "admin" && (
+              <Link to={createPageUrl("Admin")} onClick={() => setMobileOpen(false)}
+                className="flex items-center gap-3 px-3 py-3 rounded-xl"
+                style={{
+                  background: currentPageName === "Admin" ? `${primaryColor}15` : "transparent",
+                  color: currentPageName === "Admin" ? primaryColor : "var(--text-secondary)"
+                }}>
+                <Shield size={18} />
+                <span className="text-sm font-medium">Admin</span>
+              </Link>
+            )}
           </div>
         </div>
       )}
