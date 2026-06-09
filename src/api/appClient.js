@@ -151,6 +151,20 @@ function accountFromRemoteRow(row) {
   };
 }
 
+function createEntityOnlyAccount(email, data = {}) {
+  const cleanEmail = normalizeEmail(email);
+  return {
+    id: `remote-${cleanEmail.replace(/[^a-z0-9]+/g, "-")}`,
+    email: cleanEmail,
+    full_name: data.full_name || data.nickname || "",
+    avatar_url: data.avatar_url || "",
+    auth_provider: "supabase",
+    role: "user",
+    created_at: data.created_date || new Date().toISOString(),
+    updated_at: data.updated_date || "",
+  };
+}
+
 function accountToRemoteRow(account) {
   return {
     id: account.id,
@@ -203,6 +217,38 @@ async function deleteRemoteAccount(id) {
   return true;
 }
 
+async function readRemoteEntityUsers() {
+  if (!useSupabaseData()) return [];
+
+  const { data, error } = await supabase
+    .from(SUPABASE_ENTITY_TABLE)
+    .select("entity_name,user_email,data,created_date,updated_date")
+    .not("user_email", "is", null);
+
+  if (error) throw error;
+
+  const usersByEmail = new Map();
+  for (const row of data || []) {
+    const email = normalizeEmail(row.user_email);
+    if (!email || email === ADMIN_EMAIL) continue;
+
+    const current = usersByEmail.get(email) || {};
+    const rowData = row.data || {};
+    const isProfile = row.entity_name === "UserProfile";
+    usersByEmail.set(email, {
+      ...current,
+      email,
+      full_name: current.full_name || (isProfile ? rowData.full_name || rowData.nickname : ""),
+      nickname: current.nickname || (isProfile ? rowData.nickname : ""),
+      avatar_url: current.avatar_url || (isProfile ? rowData.avatar_url : ""),
+      created_date: current.created_date || row.created_date,
+      updated_date: row.updated_date || current.updated_date,
+    });
+  }
+
+  return Array.from(usersByEmail.values()).map((user) => createEntityOnlyAccount(user.email, user));
+}
+
 async function readAccountsForAuth() {
   if (useSupabaseData()) {
     try {
@@ -225,6 +271,29 @@ async function readAccountsForAuth() {
   }
 
   return readAccounts();
+}
+
+async function readUsersForAdmin() {
+  const accounts = await readAccountsForAuth();
+  if (!useSupabaseData()) return accounts;
+
+  try {
+    const entityUsers = await readRemoteEntityUsers();
+    const accountEmails = new Set(accounts.map((account) => normalizeEmail(account.email)));
+    const missingAccountUsers = entityUsers.filter((user) => !accountEmails.has(normalizeEmail(user.email)));
+    return [...accounts, ...missingAccountUsers];
+  } catch (error) {
+    warnRemoteAccounts("entity user read", error);
+    return accounts;
+  }
+}
+
+function findAccountByIdOrEmail(accounts, id) {
+  const cleanId = String(id || "");
+  const remoteEmail = cleanId.startsWith("remote-")
+    ? cleanId.slice("remote-".length).replace(/-at-/g, "@")
+    : cleanId;
+  return accounts.find((item) => item.id === cleanId || normalizeEmail(item.email) === normalizeEmail(remoteEmail));
 }
 
 async function persistAccount(account, accounts = readAccounts()) {
@@ -1328,7 +1397,7 @@ const client = {
   admin: {
     async listUsers() {
       requireAdmin();
-      const accounts = await readAccountsForAuth();
+      const accounts = await readUsersForAdmin();
       const adminAccount = accounts.find(isAdminAccount) || await persistAccount(createAdminAccount(), accounts);
       const users = [
         adminAccount,
@@ -1348,8 +1417,8 @@ const client = {
         throw new Error("O administrador principal não pode ser editado por aqui.");
       }
 
-      const accounts = await readAccountsForAuth();
-      const account = accounts.find((item) => item.id === id);
+      const accounts = await readUsersForAdmin();
+      const account = findAccountByIdOrEmail(accounts, id);
       if (!account) throw new Error("Usuário não encontrado.");
 
       const nextEmail = patch.email != null
@@ -1392,8 +1461,8 @@ const client = {
         throw new Error("O administrador principal não pode ser excluído.");
       }
 
-      const accounts = await readAccountsForAuth();
-      const account = accounts.find((item) => item.id === id);
+      const accounts = await readUsersForAdmin();
+      const account = findAccountByIdOrEmail(accounts, id);
       if (!account) throw new Error("Usuário não encontrado.");
 
       await deleteRemoteUserData(account.email);
