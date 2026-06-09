@@ -918,9 +918,10 @@ function chooseProtein(flags, index = 0) {
       : ["tofu grelhado", "grao-de-bico", "lentilha", "feijao preto"];
     return vegetarian[index % vegetarian.length];
   }
-  const proteins = flags.seafood
+  let proteins = flags.seafood
     ? ["frango grelhado", "patinho moido", "ovos mexidos", "carne bovina magra"]
     : ["frango grelhado", "peixe assado", "patinho moido", "ovos mexidos"];
+  if (flags.eggs) proteins = proteins.filter((item) => !item.includes("ovo"));
   return proteins[index % proteins.length];
 }
 
@@ -942,14 +943,47 @@ function splitIngredient(name, quantity, calories, protein, carbs, fat) {
   };
 }
 
+function pickMealFood(options, seed = 0) {
+  return options[Math.abs(seed) % options.length];
+}
+
+function chooseBreakfastProtein(flags, seed = 0) {
+  if (flags.vegan) return pickMealFood(["proteina vegetal", "pasta de amendoim", "tofu cremoso"], seed);
+  if (flags.eggs && flags.lactose) return pickMealFood(["frango desfiado", "atum"], seed);
+  if (flags.eggs) return pickMealFood(["iogurte natural", "queijo cottage", "proteina whey"], seed);
+  if (flags.lactose) return pickMealFood(["ovos mexidos", "frango desfiado"], seed);
+  return pickMealFood(["ovos mexidos", "iogurte natural", "queijo cottage"], seed);
+}
+
+function chooseBreakfastCarb(flags, seed = 0) {
+  const carbs = flags.gluten
+    ? ["tapioca", "cuscuz de milho", "banana"]
+    : ["aveia", "pao integral", "tapioca", "cuscuz de milho"];
+  return pickMealFood(carbs, seed);
+}
+
+function chooseSnackProtein(flags, seed = 0) {
+  if (flags.vegan) return pickMealFood(["proteina vegetal", "tofu cremoso", "pasta de amendoim"], seed);
+  if (flags.lactose) return pickMealFood(["atum", "frango desfiado", "proteina vegetal"], seed);
+  return pickMealFood(["iogurte natural", "queijo cottage", "whey protein", "atum"], seed);
+}
+
+function chooseSupperProtein(flags, seed = 0) {
+  if (flags.vegan) return pickMealFood(["tofu cremoso", "proteina vegetal", "pasta de amendoim"], seed);
+  if (flags.eggs && flags.lactose) return pickMealFood(["proteina vegetal", "atum"], seed);
+  if (flags.eggs) return pickMealFood(["iogurte proteico", "cottage", "whey protein"], seed);
+  if (flags.lactose) return pickMealFood(["ovos cozidos", "proteina vegetal"], seed);
+  return pickMealFood(["iogurte proteico", "cottage", "leite proteico"], seed);
+}
+
 function makeMeal(key, calories, protein, carbs, fat, flags, seed = 0) {
   const proteinFood = chooseProtein(flags, seed);
   const carbFood = chooseCarb(flags, seed);
   const fatFood = flags.nuts ? "azeite de oliva" : seed % 2 ? "abacate" : "castanhas";
-  const breakfastProtein = flags.eggs || flags.vegan ? (flags.vegan ? "pasta de amendoim" : "frango desfiado") : "ovos mexidos";
-  const breakfastCarb = flags.gluten ? (seed % 2 ? "tapioca" : "cuscuz de milho") : (seed % 2 ? "aveia" : "pao integral");
-  const snackProtein = flags.lactose || flags.vegan ? (flags.vegan ? "proteina vegetal" : "atum") : "iogurte natural";
-  const supperProtein = flags.lactose || flags.vegan ? (flags.vegan ? "tofu cremoso" : "ovos cozidos") : "iogurte proteico";
+  const breakfastProtein = chooseBreakfastProtein(flags, seed);
+  const breakfastCarb = chooseBreakfastCarb(flags, seed);
+  const snackProtein = chooseSnackProtein(flags, seed);
+  const supperProtein = chooseSupperProtein(flags, seed);
   const breakfastNames = flags.eggs || flags.vegan
     ? [
         `Café da manhã com ${breakfastCarb}, banana e ${breakfastProtein}`,
