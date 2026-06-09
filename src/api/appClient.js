@@ -9,6 +9,7 @@ const ADMIN_EMAIL = normalizeEmail(import.meta.env.VITE_ADMIN_EMAIL || "admin@fr
 const ADMIN_PASSWORD = import.meta.env.VITE_ADMIN_PASSWORD || "FreakFit@2026";
 const ADMIN_ACCOUNT_ID = "freakfit-admin";
 const SUPABASE_ENTITY_TABLE = "freakfit_entities";
+const SUPABASE_ACCOUNT_TABLE = "freakfit_accounts";
 const SUPABASE_UPLOAD_BUCKET = "freakfit-uploads";
 const ENTITY_NAMES = [
   "UserProfile",
@@ -130,6 +131,140 @@ function readAccounts() {
 
 function writeAccounts(accounts) {
   writeJson(ACCOUNTS_KEY, accounts);
+}
+
+function accountFromRemoteRow(row) {
+  if (!row) return null;
+  return {
+    id: row.id,
+    email: normalizeEmail(row.email),
+    full_name: row.full_name || "",
+    avatar_url: row.avatar_url || "",
+    auth_provider: row.auth_provider || "email",
+    role: row.role || "user",
+    salt: row.salt || "",
+    password_hash: row.password_hash || "",
+    reset_code: row.reset_code || "",
+    reset_requested_at: row.reset_requested_at || "",
+    created_at: row.created_at,
+    updated_at: row.updated_at || "",
+  };
+}
+
+function accountToRemoteRow(account) {
+  return {
+    id: account.id,
+    email: normalizeEmail(account.email),
+    full_name: account.full_name || "",
+    avatar_url: account.avatar_url || "",
+    auth_provider: account.auth_provider || "email",
+    role: account.role || "user",
+    salt: account.salt || "",
+    password_hash: account.password_hash || "",
+    reset_code: account.reset_code || "",
+    reset_requested_at: account.reset_requested_at || null,
+    created_at: account.created_at || new Date().toISOString(),
+    updated_at: account.updated_at || new Date().toISOString(),
+  };
+}
+
+function warnRemoteAccounts(action, error) {
+  console.warn(`Supabase accounts ${action} failed. Falling back to local accounts:`, error);
+}
+
+async function readRemoteAccounts() {
+  const { data, error } = await supabase
+    .from(SUPABASE_ACCOUNT_TABLE)
+    .select("*")
+    .order("created_at", { ascending: false });
+
+  if (error) throw error;
+  return (data || []).map(accountFromRemoteRow).filter(Boolean);
+}
+
+async function upsertRemoteAccount(account) {
+  const { data, error } = await supabase
+    .from(SUPABASE_ACCOUNT_TABLE)
+    .upsert(accountToRemoteRow(account), { onConflict: "id" })
+    .select("*")
+    .single();
+
+  if (error) throw error;
+  return accountFromRemoteRow(data);
+}
+
+async function deleteRemoteAccount(id) {
+  const { error } = await supabase
+    .from(SUPABASE_ACCOUNT_TABLE)
+    .delete()
+    .eq("id", id);
+
+  if (error) throw error;
+  return true;
+}
+
+async function readAccountsForAuth() {
+  if (useSupabaseData()) {
+    try {
+      const remoteAccounts = await readRemoteAccounts();
+      const remoteEmails = new Set(remoteAccounts.map((account) => normalizeEmail(account.email)));
+      const localOnlyAccounts = readAccounts().filter((account) =>
+        account?.email && !remoteEmails.has(normalizeEmail(account.email))
+      );
+
+      if (localOnlyAccounts.length > 0) {
+        await Promise.all(localOnlyAccounts.map((account) => upsertRemoteAccount(account)));
+      }
+
+      const accounts = [...remoteAccounts, ...localOnlyAccounts];
+      writeAccounts(accounts);
+      return accounts;
+    } catch (error) {
+      warnRemoteAccounts("read", error);
+    }
+  }
+
+  return readAccounts();
+}
+
+async function persistAccount(account, accounts = readAccounts()) {
+  const normalized = {
+    ...account,
+    email: normalizeEmail(account.email),
+    updated_at: account.updated_at || new Date().toISOString(),
+  };
+  const nextAccounts = [
+    normalized,
+    ...accounts.filter((item) =>
+      item.id !== normalized.id && normalizeEmail(item.email) !== normalized.email
+    ),
+  ];
+
+  writeAccounts(nextAccounts);
+
+  if (useSupabaseData()) {
+    try {
+      await upsertRemoteAccount(normalized);
+    } catch (error) {
+      warnRemoteAccounts("save", error);
+    }
+  }
+
+  return normalized;
+}
+
+async function removePersistedAccount(account, accounts = readAccounts()) {
+  writeAccounts(accounts.filter((item) => item.id !== account.id));
+
+  if (useSupabaseData()) {
+    try {
+      await deleteRemoteAccount(account.id);
+    } catch (error) {
+      warnRemoteAccounts("delete", error);
+    }
+  }
+
+  return true;
 }
 
 function toHex(buffer) {
@@ -1081,7 +1216,7 @@ const client = {
         throw new Error("Este e-mail é reservado para o administrador.");
       }
 
-      const accounts = readAccounts();
+      const accounts = await readAccountsForAuth();
       if (accounts.some((account) => account.email === cleanEmail)) {
         throw new Error("Já existe uma conta cadastrada com este e-mail.");
       }
@@ -1096,23 +1231,23 @@ const client = {
         role: "user",
         created_at: new Date().toISOString(),
       };
-      writeAccounts([account, ...accounts]);
+      await persistAccount(account, accounts);
       return sanitizeUser(account);
     },
     async login({ email, password }) {
       const cleanEmail = validateAuthFields({ email, password }, "login");
       if (cleanEmail === ADMIN_EMAIL && String(password) === ADMIN_PASSWORD) {
-        const accounts = readAccounts();
+        const accounts = await readAccountsForAuth();
         const previousAdmin = accounts.find(isAdminAccount);
         const adminAccount = {
           ...createAdminAccount(),
           created_at: previousAdmin?.created_at || new Date().toISOString(),
         };
-        writeAccounts([adminAccount, ...accounts.filter((account) => account.email !== ADMIN_EMAIL)]);
+        await persistAccount(adminAccount, accounts);
         return persistSession(adminAccount);
       }
 
-      const accounts = readAccounts();
+      const accounts = await readAccountsForAuth();
       const account = accounts.find((item) => item.email === cleanEmail);
       if (!account || account.auth_provider !== "email") {
         throw new Error("E-mail ou senha inválidos.");
@@ -1127,7 +1262,7 @@ const client = {
     async loginWithProvider(provider = "google") {
       const cleanProvider = provider === "github" ? "github" : "google";
       const email = `${cleanProvider}@freakfit.ai`;
-      const accounts = readAccounts();
+      const accounts = await readAccountsForAuth();
       const existing = accounts.find((account) => account.email === email);
       if (existing) return persistSession(existing);
 
@@ -1139,28 +1274,29 @@ const client = {
         role: "user",
         created_at: new Date().toISOString(),
       };
-      writeAccounts([account, ...accounts]);
+      await persistAccount(account, accounts);
       return persistSession(account);
     },
     async requestPasswordReset(email) {
       const cleanEmail = validateAuthFields({ email }, "reset");
-      const accounts = readAccounts();
+      const accounts = await readAccountsForAuth();
       const account = accounts.find((item) => item.email === cleanEmail);
       if (!account || account.auth_provider !== "email") {
         throw new Error("Não encontramos uma conta com este e-mail.");
       }
       const resetCode = String(Math.floor(100000 + Math.random() * 900000));
-      const updated = accounts.map((item) =>
-        item.email === cleanEmail
-          ? { ...item, reset_code: resetCode, reset_requested_at: new Date().toISOString() }
-          : item
-      );
-      writeAccounts(updated);
+      const updatedAccount = {
+        ...account,
+        reset_code: resetCode,
+        reset_requested_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      };
+      await persistAccount(updatedAccount, accounts);
       return { reset_code: resetCode };
     },
     async resetPassword({ email, code, password }) {
       const cleanEmail = validateAuthFields({ email, password }, "reset");
-      const accounts = readAccounts();
+      const accounts = await readAccountsForAuth();
       const account = accounts.find((item) => item.email === cleanEmail);
       if (!account || account.reset_code !== String(code || "").trim()) {
         throw new Error("Código de recuperação inválido.");
@@ -1173,7 +1309,7 @@ const client = {
         reset_requested_at: "",
         updated_at: new Date().toISOString(),
       };
-      writeAccounts(accounts.map((item) => item.email === cleanEmail ? updatedAccount : item));
+      await persistAccount(updatedAccount, accounts);
       return persistSession(updatedAccount);
     },
     logout(redirectUrl = "/") {
@@ -1192,8 +1328,8 @@ const client = {
   admin: {
     async listUsers() {
       requireAdmin();
-      const accounts = readAccounts();
-      const adminAccount = accounts.find(isAdminAccount) || createAdminAccount();
+      const accounts = await readAccountsForAuth();
+      const adminAccount = accounts.find(isAdminAccount) || await persistAccount(createAdminAccount(), accounts);
       const users = [
         adminAccount,
         ...accounts.filter((account) => !isAdminAccount(account)),
@@ -1212,7 +1348,7 @@ const client = {
         throw new Error("O administrador principal não pode ser editado por aqui.");
       }
 
-      const accounts = readAccounts();
+      const accounts = await readAccountsForAuth();
       const account = accounts.find((item) => item.id === id);
       if (!account) throw new Error("Usuário não encontrado.");
 
@@ -1241,7 +1377,7 @@ const client = {
         nextAccount.auth_provider = "email";
       }
 
-      writeAccounts(accounts.map((item) => item.id === id ? nextAccount : item));
+      await persistAccount(nextAccount, accounts);
 
       if (account.email !== nextEmail) {
         reassignLocalUserData(account.email, nextEmail);
@@ -1256,13 +1392,13 @@ const client = {
         throw new Error("O administrador principal não pode ser excluído.");
       }
 
-      const accounts = readAccounts();
+      const accounts = await readAccountsForAuth();
       const account = accounts.find((item) => item.id === id);
       if (!account) throw new Error("Usuário não encontrado.");
 
       await deleteRemoteUserData(account.email);
       deleteLocalUserData(account.email);
-      writeAccounts(accounts.filter((item) => item.id !== id));
+      await removePersistedAccount(account, accounts);
       return true;
     },
   },
